@@ -13,6 +13,7 @@ Button K1: PA0 (aktive high)
 LED D2: PA1 (Sink)
 
 Arduino Pin Numbers:
+
  PA0             
  PA1             
  PA2             
@@ -97,6 +98,7 @@ Arduino Pin Numbers:
  PH1              
 
 Alternate pins number
+
  PA0_ALT1     
  PA0_ALT2     
  PA1_ALT1     
