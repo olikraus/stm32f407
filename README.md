@@ -12,6 +12,9 @@ Button K1: PA0 (aktive high)
 
 LED D2: PA1 (Sink)
 
+PIN_SPI_MOSI          PA7
+
+
 Arduino Pin Numbers:
 
  PA0             
