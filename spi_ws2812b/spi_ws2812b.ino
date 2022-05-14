@@ -70,18 +70,18 @@ extern "C" void __attribute__ ((interrupt)) SPI1_IRQHandler(void)
   ws2812_spi.spi_status_register = SPI1->SR;
   ws2812_spi.isr_cnt++;
 
-
-  //SPI1->DR = 0;
-  //return;
+  if ( (ws2812_spi.spi_status_register & SPI_SR_TXE) == 0 ) 
+    return;
 
   if ( ws2812_spi.byte_cnt > 0 || ws2812_spi.bit_cnt > 0 )
   {
-    uint32_t d = 0x4444;
-    register uint32_t b;
+    uint16_t d = 0x4444;
+    uint16_t b;
     
     if ( ws2812_spi.bit_cnt == 0 )
     {
-      ws2812_spi.b = *ws2812_spi.spi_data++;
+      ws2812_spi.b = *ws2812_spi.spi_data;
+      ws2812_spi.spi_data++;
       ws2812_spi.byte_cnt--;
       ws2812_spi.bit_cnt = 2;
     }
@@ -96,6 +96,17 @@ extern "C" void __attribute__ ((interrupt)) SPI1_IRQHandler(void)
     if ( b & 16 )
       d |= 0x0002;
     b <<= 4;
+    /*
+    if ( b & 8 )
+      d |= 0x2000;
+    if ( b & 4 )
+      d |= 0x0200;
+    if ( b & 2 )
+      d |= 0x0020;
+    if ( b & 1 )
+      d |= 0x0002;
+    b >>= 4;
+    */
     ws2812_spi.b = b;
     
     SPI1->DR = d;
@@ -135,13 +146,9 @@ extern "C" void __attribute__ ((interrupt)) SPI1_IRQHandler(void)
 void ws2812_spi_out(uint8_t *data, int cnt)
 {
 
-  if ( ws2812_spi.in_progress )
-    return;
   /* wait until data is transmitted */
-  /*
   while( ws2812_spi.in_progress != 0 )
     ;
-  */
 
 
   SPI1->CR1 = 0;    /* disable SPI1 */
@@ -168,11 +175,60 @@ void ws2812_spi_out(uint8_t *data, int cnt)
 
 
   SPI1->CR1 |= SPI_CR1_SPE;   /* enable SPI */
+  
+  //ws2812_spi.spi_status_register = SPI1->SR;
 
   /* load first byte, so that the TXRDY interrupt will be generated */
   /* this is just a zero byte and is ignored by the WS2812B */
   SPI1->DR = 0;  
 
+}
+
+/*=======================================================================*/
+
+/* https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both */
+
+
+void hsv_to_rgb(uint8_t h, uint8_t s, uint8_t v, uint8_t *r, uint8_t *g, uint8_t *b)
+{
+    uint8_t region, remainder, p, q, t;
+
+    if (s == 0)
+    {
+        *r = v;
+        *g = v;
+        *b = v;
+        return ;
+    }
+
+    region = h / 43;
+    remainder = (h - (region * 43)) * 6; 
+
+    p = (v * (uint16_t)(255 - s)) >> 8;
+    q = (v * (uint16_t)(255 - ((s * remainder) >> 8))) >> 8;
+    t = (v * (uint16_t)(255 - ((s * (uint16_t)(255 - remainder)) >> 8))) >> 8;
+
+    switch (region)
+    {
+        case 0:
+            *r = v; *g = t; *b = p;
+            break;
+        case 1:
+            *r = q; *g = v; *b = p;
+            break;
+        case 2:
+            *r = p; *g = v; *b = t;
+            break;
+        case 3:
+            *r = p; *g = q; *b = v;
+            break;
+        case 4:
+            *r = t; *g = p; *b = v;
+            break;
+        default:
+            *r = v; *g = p; *b = q;
+            break;
+    }
 }
 
 /*=======================================================================*/
@@ -191,19 +247,118 @@ void setup() {
   ws2812_spi_init();
 }
 
-// the loop function runs over and over again forever
+/* format is GRB */
+
+
+uint8_t a[64*3];
+
+void setColByPos(uint8_t pos, uint8_t r, uint8_t g, uint8_t b)
+{
+  a[pos*3] = g;
+  a[pos*3+1] = r;
+  a[pos*3+2] = b;
+}
+
+void addColByPos(uint8_t pos, uint8_t r, uint8_t g, uint8_t b)
+{
+  a[pos*3] += g;
+  a[pos*3+1] += r;
+  a[pos*3+2] += b;
+}
+
+void setColByXY(uint8_t x, uint8_t y, uint8_t r, uint8_t g, uint8_t b )
+{
+  uint8_t pos = y*8;
+  if ( y & 1 )
+  {
+    pos += 7-x;
+  }
+  else
+  {
+    pos += x;
+  }
+  setColByPos(pos, r, g, b);
+}
+
+void addColByXY(uint8_t x, uint8_t y, uint8_t r, uint8_t g, uint8_t b )
+{
+  uint8_t pos = y*8;
+  if ( y & 1 )
+  {
+    pos += 7-x;
+  }
+  else
+  {
+    pos += x;
+  }
+  addColByPos(pos, r, g, b);
+}
+
+void clrAll(void)
+{
+  for( uint8_t i; i < 3*64; i++ )
+    a[i] = 0;
+}
+
+uint8_t v = 0;
+int8_t v1 = 0;
+int8_t v2 = 0;
+
+/*
+ * radius=100 small
+ */
+void addBallByXY(uint8_t cx, uint8_t cy, uint8_t radius, uint8_t r, uint8_t g, uint8_t b)
+{
+  uint8_t x, y;
+  uint16_t dx, dy;
+  uint16_t dint;
+  for( y = 0; y < 8; y++ )
+  {
+    for( x = 0; x < 8; x++ )
+    {
+      dx = cx-x;
+      dy = cy-y;
+      dint = dx*dx+dy*dy;
+      dint = dint*radius+64;
+      addColByXY(x, y, (r*64)/dint, (g*64)/dint, (b*64)/dint );
+    }
+  }
+}
+
 void loop() {
-  uint8_t a[3] = { 0xff, 0x00, 0x00 };
   Serial.print("> ");
   digitalWrite(PA1, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delay(100);                       // wait for a second
+  delay(10);                       // wait for a second
   digitalWrite(PA1, LOW);    // turn the LED off by making the voltage LOW
-  delay(100);                       // wait for a second
-  ws2812_spi_out(a, 3);
+  delay(10);                       // wait for a second
   Serial.print(ws2812_spi.isr_cnt, DEC);
 
   Serial.print(" SR=");
   Serial.print(ws2812_spi.spi_status_register, HEX);
   
   Serial.println("");
+  v++;
+    
+  v1++;
+  if ( v1 >= 10 )
+    v1 = -10;
+    
+  v2++;
+  if ( v2 >= 7 )
+    v2 = -7;
+    
+  clrAll();
+  //addBallByXY(4, abs(v1)/3, 70, 0, 10, 0);
+  //addBallByXY(abs(v2)/2, 5, 70, 0, 0, 10);
+  //setColByPos(v, 3, 0, 0);
+  for( uint8_t y = 0; y < 8; y++ )
+    for( uint8_t x = 0; x < 8; x++ )
+    {
+      uint8_t r,g,b;
+      hsv_to_rgb(y*16+v, 200, x/2+3, &r, &g, &b);
+      setColByXY(x, y, r, g, b);
+         
+    }
+  //setColByPos(0, 0, v, v);
+  ws2812_spi_out(a, 3*64);
 }
