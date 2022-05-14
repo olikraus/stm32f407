@@ -19,6 +19,8 @@ struct _ws2812_spi
   volatile uint32_t b;    // the current byte
   volatile uint32_t bit_cnt;
   volatile uint32_t post_data_wait;
+  volatile uint32_t isr_cnt;
+  volatile uint32_t spi_status_register;
   volatile uint32_t isr_ticks;
   volatile uint32_t max_isr_ticks;
   volatile int in_progress;
@@ -30,6 +32,8 @@ ws2812_spi_t ws2812_spi;
 
 void ws2812_spi_init(void)
 {
+  ws2812_spi.isr_cnt = 0;
+  
   RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
   delay(1);
   SPI1->CR1 = 0;  /* disable SPI */
@@ -58,10 +62,18 @@ void ws2812_spi_init(void)
   This procedure is time critical: 64 Sys-Clock-Cycle per SPI bit 64*16 = 1024 Clock Cycles
   ==> Upper Limit for this procedure are 1024 clock cycles
 */
-void __attribute__ ((interrupt)) SPI1_IRQHandler(void)
+extern "C" void __attribute__ ((interrupt)) SPI1_IRQHandler(void)
 {
   //uint32_t start = SysTick->VAL;
   //uint32_t end;
+
+  ws2812_spi.spi_status_register = SPI1->SR;
+  ws2812_spi.isr_cnt++;
+
+
+  //SPI1->DR = 0;
+  //return;
+
   if ( ws2812_spi.byte_cnt > 0 || ws2812_spi.bit_cnt > 0 )
   {
     uint32_t d = 0x4444;
@@ -122,10 +134,14 @@ void __attribute__ ((interrupt)) SPI1_IRQHandler(void)
 
 void ws2812_spi_out(uint8_t *data, int cnt)
 {
-  
+
+  if ( ws2812_spi.in_progress )
+    return;
   /* wait until data is transmitted */
+  /*
   while( ws2812_spi.in_progress != 0 )
     ;
+  */
 
 
   SPI1->CR1 = 0;    /* disable SPI1 */
@@ -134,6 +150,10 @@ void ws2812_spi_out(uint8_t *data, int cnt)
     | SPI_CR1_DFF   /* select 16 bit data format */
     | SPI_CR1_BR_2  /* 100: divide by 32 */
     | SPI_CR1_MSTR  /* master transmit */
+    | SPI_CR1_SSM   /* SW Slave Management */
+    | SPI_CR1_SSI   /* Internal Slave Select */
+    | SPI_CR1_BIDIMODE /* select single line (Master: MOSI pin) bidirectional mode */
+    | SPI_CR1_BIDIOE   /* select transmit mode*/
     ;
   
   SPI1->CR2 = 0
@@ -145,6 +165,7 @@ void ws2812_spi_out(uint8_t *data, int cnt)
   ws2812_spi.bit_cnt = 0;
   ws2812_spi.post_data_wait = 9;    /* 8 would be sufficient, use 9 to be on the safe side */
   ws2812_spi.in_progress  = 1;
+
 
   SPI1->CR1 |= SPI_CR1_SPE;   /* enable SPI */
 
@@ -161,15 +182,28 @@ void ws2812_spi_out(uint8_t *data, int cnt)
 void setup() {
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(PA1, OUTPUT);
+  Serial.begin(9600);
+  /*
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
+  */
   ws2812_spi_init();
 }
 
 // the loop function runs over and over again forever
 void loop() {
   uint8_t a[3] = { 0xff, 0x00, 0x00 };
+  Serial.print("> ");
   digitalWrite(PA1, HIGH);   // turn the LED on (HIGH is the voltage level)
   delay(100);                       // wait for a second
   digitalWrite(PA1, LOW);    // turn the LED off by making the voltage LOW
   delay(100);                       // wait for a second
   ws2812_spi_out(a, 3);
+  Serial.print(ws2812_spi.isr_cnt, DEC);
+
+  Serial.print(" SR=");
+  Serial.print(ws2812_spi.spi_status_register, HEX);
+  
+  Serial.println("");
 }

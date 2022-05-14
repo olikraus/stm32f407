@@ -237,3 +237,8 @@ DCMI_IRQHandler                   /* DCMI                         */
 HASH_RNG_IRQHandler               /* Hash and Rng                 */
 FPU_IRQHandler                    /* FPU                          */
 ```
+
+IRQ handler inside Arduino require `extern "C"` prefix:
+```
+extern "C" void __attribute__ ((interrupt)) SPI1_IRQHandler(void)
+```
