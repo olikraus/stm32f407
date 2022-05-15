@@ -12,11 +12,12 @@ Button K1: PA0 (aktive high)
 
 LED D2: PA1 (Sink)
 
-STM32duino Project: 
+STM32duino Project (https://github.com/stm32duino/Arduino_Core_STM32): 
   * SystemCoreClock: 168 MHz
   * APB2: 84 Mhz
   * APB1: 42 Mhz
   * Register Include File: https://raw.githubusercontent.com/stm32duino/Arduino_Core_STM32/main/system/Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f407xx.h
+  * SysTick: https://github.com/ARM-software/CMSIS_5/blob/develop/CMSIS/Core/Include/core_cm4.h
 
 Arduino Pin Numbers:
 

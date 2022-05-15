@@ -64,6 +64,15 @@ void sysinfo(void)
   Serial.print(SystemCoreClock/1000000UL / prex[(RCC->CFGR & RCC_CFGR_PPRE2) >> RCC_CFGR_PPRE2_Pos], DEC);
   Serial.println(" MHz");
 
+  Serial.print("SysTick->LOAD=0x");
+  Serial.print(SysTick->LOAD, HEX);
+  Serial.print("=");
+  Serial.print(SysTick->LOAD, DEC);
+  Serial.println("");
+  Serial.print("SysTick->CTRL=0x");
+  Serial.print(SysTick->CTRL, HEX);
+  Serial.println("");
+
 
   if ( RCC->APB2ENR & RCC_APB2ENR_SPI1EN )
     Serial.println("SPI1 @APB2 clock enabled");
