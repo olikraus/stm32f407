@@ -17,6 +17,7 @@ STM32duino:
   * APB2: 84 Mhz
   * APB1: 42 Mhz
 
+Register Include (stm32duino project): https://raw.githubusercontent.com/stm32duino/Arduino_Core_STM32/main/system/Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f407xx.h
 
 Arduino Pin Numbers:
 
@@ -238,7 +239,7 @@ HASH_RNG_IRQHandler               /* Hash and Rng                 */
 FPU_IRQHandler                    /* FPU                          */
 ```
 
-IRQ handler inside Arduino require `extern "C"` prefix:
+IRQ handler inside Arduino requires `extern "C"` prefix:
 ```
 extern "C" void __attribute__ ((interrupt)) SPI1_IRQHandler(void)
 ```
