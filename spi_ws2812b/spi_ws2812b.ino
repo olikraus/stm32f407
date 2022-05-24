@@ -326,6 +326,7 @@ void addBallByXY(uint8_t cx, uint8_t cy, uint8_t radius, uint8_t r, uint8_t g, u
 }
 
 void loop() {
+  uint8_t r,g,b;
   Serial.print("> ");
   digitalWrite(PA1, HIGH);   // turn the LED on (HIGH is the voltage level)
   delay(10);                       // wait for a second
@@ -348,17 +349,16 @@ void loop() {
     v2 = -7;
     
   clrAll();
-  //addBallByXY(4, abs(v1)/3, 70, 0, 10, 0);
-  //addBallByXY(abs(v2)/2, 5, 70, 0, 0, 10);
-  //setColByPos(v, 3, 0, 0);
+  /*
   for( uint8_t y = 0; y < 8; y++ )
     for( uint8_t x = 0; x < 8; x++ )
     {
-      uint8_t r,g,b;
       hsv_to_rgb(y*16+v, 200, x/2+3, &r, &g, &b);
       setColByXY(x, y, r, g, b);
          
     }
-  //setColByPos(0, 0, v, v);
+  */
+  hsv_to_rgb(v, 255, 100, &r, &g, &b);
+  setColByXY(3, 3, r, g, b);
   ws2812_spi_out(a, 3*64);
 }
