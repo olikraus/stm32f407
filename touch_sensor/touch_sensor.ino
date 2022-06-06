@@ -108,7 +108,7 @@ uint32_t getCapValue(GPIO_TypeDef *gpio, unsigned pin)
 #define SAMPLES 128
 
 uint16_t iosample[SAMPLES];
-uint16_t iosample2[SAMPLES];
+uint16_t remove_me[SAMPLES];
 
 uint32_t getChangeTo0(GPIO_TypeDef *gpio, unsigned pin)
 {
@@ -131,167 +131,33 @@ uint32_t getChangeTo0(GPIO_TypeDef *gpio, unsigned pin)
   gpio->PUPDR |= ((uint32_t)2)<<(pin*2);             /* 10: pull down */
   
   gpio->BSRR = b1;      /* high output */
-  delay(10);     /* wait until high is stable */
+  //delay(10);     /* wait until high is stable */
+
+  /* wait for some time */
+  __NOP(); __NOP(); __NOP(); __NOP();  __NOP(); __NOP(); __NOP(); __NOP();
+  __NOP(); __NOP(); __NOP(); __NOP();  __NOP(); __NOP(); __NOP(); __NOP();
+  __NOP(); __NOP(); __NOP(); __NOP();  __NOP(); __NOP(); __NOP(); __NOP();
+  __NOP(); __NOP(); __NOP(); __NOP();  __NOP(); __NOP(); __NOP(); __NOP();
+
   
   //start = SysTick->VAL; /* get start value */
   
+
+#define GPIO_SAMPLE_LINE *s++ = gpio->IDR;
+
+#define GPIO_SAMPLE_LINE2 GPIO_SAMPLE_LINE GPIO_SAMPLE_LINE
+#define GPIO_SAMPLE_LINE4 GPIO_SAMPLE_LINE2 GPIO_SAMPLE_LINE2
+#define GPIO_SAMPLE_LINE8 GPIO_SAMPLE_LINE4 GPIO_SAMPLE_LINE4
+#define GPIO_SAMPLE_LINE16 GPIO_SAMPLE_LINE8 GPIO_SAMPLE_LINE8
+#define GPIO_SAMPLE_LINE32 GPIO_SAMPLE_LINE16 GPIO_SAMPLE_LINE16
+#define GPIO_SAMPLE_LINE64 GPIO_SAMPLE_LINE32 GPIO_SAMPLE_LINE32
+#define GPIO_SAMPLE_LINE128 GPIO_SAMPLE_LINE64 GPIO_SAMPLE_LINE64
+
+  /* generate all 128 GPIO read statements, disable interrupts during this GPIO read */
+  __disable_irq();
   gpio->MODER &= m2;    /* change to input */
-
-  /* the pulldown should enforce a zero after some time */
-  //do {
-  //} while( (gpio->IDR & b1) != 0 ) ;
-  
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-
-  // 32
-  
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-
-  // 64
-
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-
-  // 32
-  
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-  *s++ = gpio->IDR;
-
-  // 64
+  GPIO_SAMPLE_LINE128
+  __enable_irq();
 
   for( i = 0; i < SAMPLES; i++ )
   {
@@ -300,6 +166,99 @@ uint32_t getChangeTo0(GPIO_TypeDef *gpio, unsigned pin)
   }
   return i;
   //return getProcessorClockDelta(start);
+}
+
+/*================================================*/
+/*
+
+ Do a binary search in the global iosample array.
+ Look for a 1 to 0 transition and return the position of the same
+ mask: only one bit should be set here, which denotest the bit for which the 1 to 0 transition will be searched
+
+ returns:
+  0 if all bits are 0
+  1..SAMPLES-1 if there the first initial bits are 1
+  SAMPLES if all bits are 1
+
+*/
+uint32_t getTo0PosByBinarySearch(uint16_t mask)
+{
+  uint16_t l = 0;
+  uint16_t r = SAMPLES-1;
+  uint32_t mid;
+  while(l < r) 
+  {
+    mid = l+(r-l)/2;
+    if ( iosample[mid] & mask )
+      l = mid+1;
+    else
+      r = mid-1;
+  }
+  if ( l >= SAMPLES ) return SAMPLES;
+  if ( iosample[l] & mask ) return l+1;
+  return l;
+}
+
+/*
+ selectMask: consider only pins where the bit is set inside mask
+*/
+void getAllChangeTo0(GPIO_TypeDef *gpio, uint16_t selectMask, uint16_t changeTo0Cnt[16])
+{
+
+  uint16_t *s = iosample;
+  uint32_t m01 = selectMask; 
+
+  // interleave with zero bits
+  // https://graphics.stanford.edu/~seander/bithacks.html#InterleaveBMN
+  m01 = ( m01 | ( m01 << 8 )) & 0x00ff00ff;
+  m01 = ( m01 | ( m01 << 4 )) & 0x0f0f0f0f;
+  m01 = ( m01 | ( m01 << 2 )) & 0x33333333;
+  m01 = ( m01 | ( m01 << 1 )) & 0x55555555;
+
+  uint32_t m10 = m01<<1;
+  uint32_t m11 = m01 | m10;
+
+  gpio->MODER &= ~m11;            /* 00: clear modes of all related pins to zero */
+  gpio->MODER |= m01;             /* 01: output mode */
+  gpio->OTYPER &= ~m11;           /* 00: push pull */
+  gpio->OSPEEDR |= m11;           /* 11: very fast */
+  gpio->PUPDR &= ~m11;            /* 00: clear */
+  gpio->PUPDR |= m10;             /* 10: pull down */
+  /* it is assumed, that the alt function is 0000 */
+  
+  gpio->BSRR = selectMask;      /* high output */
+
+  /* wait for some time to charge the touch sensor */
+  __NOP(); __NOP(); __NOP(); __NOP();  __NOP(); __NOP(); __NOP(); __NOP();
+  __NOP(); __NOP(); __NOP(); __NOP();  __NOP(); __NOP(); __NOP(); __NOP();
+  __NOP(); __NOP(); __NOP(); __NOP();  __NOP(); __NOP(); __NOP(); __NOP();
+  __NOP(); __NOP(); __NOP(); __NOP();  __NOP(); __NOP(); __NOP(); __NOP();
+
+#define GPIO_ALLSAMPLE_LINE *s++ = gpio->IDR;
+
+#define GPIO_ALLSAMPLE_LINE2 GPIO_ALLSAMPLE_LINE GPIO_ALLSAMPLE_LINE
+#define GPIO_ALLSAMPLE_LINE4 GPIO_ALLSAMPLE_LINE2 GPIO_ALLSAMPLE_LINE2
+#define GPIO_ALLSAMPLE_LINE8 GPIO_ALLSAMPLE_LINE4 GPIO_ALLSAMPLE_LINE4
+#define GPIO_ALLSAMPLE_LINE16 GPIO_ALLSAMPLE_LINE8 GPIO_ALLSAMPLE_LINE8
+#define GPIO_ALLSAMPLE_LINE32 GPIO_ALLSAMPLE_LINE16 GPIO_ALLSAMPLE_LINE16
+#define GPIO_ALLSAMPLE_LINE64 GPIO_ALLSAMPLE_LINE32 GPIO_ALLSAMPLE_LINE32
+#define GPIO_ALLSAMPLE_LINE128 GPIO_ALLSAMPLE_LINE64 GPIO_ALLSAMPLE_LINE64
+
+  // generate all 128 GPIO read statements, disable interrupts during this GPIO read
+  __disable_irq();
+  gpio->MODER &= ~m11;    /* change to input */
+  GPIO_SAMPLE_LINE128
+  __enable_irq();
+  // data is now in the iosample array
+  
+  for( uint16_t i = 0; i < 16; i++ )
+  {
+    if ( selectMask & (1<<i) )  
+      changeTo0Cnt[i] = getTo0PosByBinarySearch(1<<i);
+    else
+      changeTo0Cnt[i] = 0;
+  }
+  
 }
 
 /*================================================*/
@@ -359,7 +318,6 @@ uint32_t getDMAChangeTo0(GPIO_TypeDef *gpio, unsigned pin)
   //DMA1->IFCR |= DMA_ISR_TCIF2;
   DMA2_Stream2->CR = 0;    /* disable DMA channel */  
   
-
   /* DIR:10 Memory-to-memory source: DMA_SxPAR dest:DMA_SxM0AR */
   DMA2_Stream2->CR |= 0
     | DMA_SxCR_DIR_1  /* memory to memory mode */
@@ -373,13 +331,11 @@ uint32_t getDMAChangeTo0(GPIO_TypeDef *gpio, unsigned pin)
     ;
 
   DMA2_Stream2->PAR = (uint32_t) (&(gpio->IDR)); /* connect to input bits */
-  //DMA2_Stream2->PAR = (uint32_t)(iosample2); 
   DMA2_Stream2->M0AR = (uint32_t)(iosample);
   DMA2_Stream2->NDTR = SAMPLES;
   
   //NVIC_EnableIRQ(DMA1_Channel4_5_6_7_IRQn);
   //NVIC_SetPriority(DMA1_Channel4_5_6_7_IRQn,3);
-
 
   DMA2_Stream2->CR |= DMA_SxCR_EN;   /* enable DMA channel */  
   
@@ -397,6 +353,11 @@ uint32_t getDMAChangeTo0(GPIO_TypeDef *gpio, unsigned pin)
   //return getProcessorClockDelta(start);
 }
 
+
+/*================================================*/
+
+
+
 /*================================================*/
 
 
@@ -412,8 +373,11 @@ void setup(void) {
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(PA1, OUTPUT);
   pinMode(PB9, OUTPUT);
+  pinMode(PB2, INPUT);
 
 }
+
+uint16_t changeTo0Cnt[16];
 
 // the loop function runs over and over again forever
 void loop() {
@@ -430,6 +394,16 @@ void loop() {
   Serial.print(" getDMAChangeTo0=");
   Serial.print(getDMAChangeTo0(GPIOB, 9), DEC);
 
+  //getAllChangeTo0(GPIOB, ~(1<<2), changeTo0Cnt);
+  getAllChangeTo0(GPIOB, (1<<9), changeTo0Cnt);
+  Serial.print(" getAllChangeTo0=");
+  Serial.print(changeTo0Cnt[9], DEC);
+
+  //for( int i = 0; i< 24; i++ )
+  //{
+  //  Serial.print(" ");
+  //  Serial.print((word)iosample[i], HEX);
+  //}
 
   
   Serial.println("");
