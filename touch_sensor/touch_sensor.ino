@@ -108,7 +108,6 @@ uint32_t getCapValue(GPIO_TypeDef *gpio, unsigned pin)
 #define SAMPLES 128
 
 uint16_t iosample[SAMPLES];
-uint16_t remove_me[SAMPLES];
 
 uint32_t getChangeTo0(GPIO_TypeDef *gpio, unsigned pin)
 {
@@ -172,12 +171,12 @@ uint32_t getChangeTo0(GPIO_TypeDef *gpio, unsigned pin)
 /*
 
  Do a binary search in the global iosample array.
- Look for a 1 to 0 transition and return the position of the same
- mask: only one bit should be set here, which denotest the bit for which the 1 to 0 transition will be searched
+ Look for a 1 to 0 transition and return the position of the 1-0 transition (the first 0 value)
+ mask: only one bit should be set here, which must be the bit for which the 1 to 0 transition will be searched
 
  returns:
   0 if all bits are 0
-  1..SAMPLES-1 if there the first initial bits are 1
+  1..SAMPLES-1 for the initial number of 1 found
   SAMPLES if all bits are 1
 
 */
@@ -247,7 +246,7 @@ void getAllChangeTo0(GPIO_TypeDef *gpio, uint16_t selectMask, uint16_t changeTo0
   // generate all 128 GPIO read statements, disable interrupts during this GPIO read
   __disable_irq();
   gpio->MODER &= ~m11;    /* change to input */
-  GPIO_SAMPLE_LINE128
+  GPIO_ALLSAMPLE_LINE128
   __enable_irq();
   // data is now in the iosample array
   
@@ -358,8 +357,6 @@ uint32_t getDMAChangeTo0(GPIO_TypeDef *gpio, unsigned pin)
 
 
 
-/*================================================*/
-
 
 // the setup function runs once when you press reset or power the board
 void setup(void) {
@@ -373,11 +370,10 @@ void setup(void) {
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(PA1, OUTPUT);
   pinMode(PB9, OUTPUT);
-  pinMode(PB2, INPUT);
 
 }
 
-uint16_t changeTo0Cnt[16];
+uint16_t changeTo0Cnt[16];-
 
 // the loop function runs over and over again forever
 void loop() {
