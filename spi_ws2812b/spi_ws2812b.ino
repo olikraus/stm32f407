@@ -1,5 +1,9 @@
 /*
   spi_ws2812b.ino
+  
+*/
+
+/*
 
   SystemCoreClock: 168 MHz
   APB2: 84Mhz 
@@ -187,8 +191,6 @@ void ws2812_spi_out(uint8_t *data, int cnt)
 /*=======================================================================*/
 
 /* https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both */
-
-
 void hsv_to_rgb(uint8_t h, uint8_t s, uint8_t v, uint8_t *r, uint8_t *g, uint8_t *b)
 {
     uint8_t region, remainder, p, q, t;
