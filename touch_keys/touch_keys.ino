@@ -197,9 +197,12 @@ void sendLEDMatrix(void)
 
 void setRGB(uint8_t pos, uint8_t r, uint8_t g, uint8_t b)
 {
-  LEDMatrixData[pos*3] = g;
-  LEDMatrixData[pos*3+1] = r;
-  LEDMatrixData[pos*3+2] = b;
+  if ( pos < 64 )
+  {
+    LEDMatrixData[pos*3] = g;
+    LEDMatrixData[pos*3+1] = r;
+    LEDMatrixData[pos*3+2] = b;
+  }
 }
 
 /* https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both */
@@ -281,11 +284,18 @@ struct touch_measure_struct {
 
 /* global variables */
 
-#define TOUCH_KEY_CNT 2
+#define TOUCH_KEY_CNT 5
 struct touch_status_struct touch_status_list[TOUCH_KEY_CNT] =  {
+  { GPIOB, 5, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 7, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 6, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 8, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
   { GPIOB, 9, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOB, 10, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0 }
 };
+
+int key_to_LED_map[TOUCH_KEY_CNT];
+
+volatile int current_key = -1; // contains the current pressed key as global variable
 
 #define TOUCH_MEASURE_CNT 5 /* GPIOA .. GPIOE */
 struct touch_measure_struct touch_measure_list[TOUCH_MEASURE_CNT];
@@ -318,11 +328,18 @@ void fillTouchMeasure(struct touch_measure_struct *m, GPIO_TypeDef *gpio)
 
 void buildTouchMeasureList(void)
 {
+  int i;
+  for( i = 0; i < TOUCH_KEY_CNT; i++ )
+    key_to_LED_map[i] = -1;
+
   fillTouchMeasure(touch_measure_list+0, GPIOA);
   fillTouchMeasure(touch_measure_list+1, GPIOB);
   fillTouchMeasure(touch_measure_list+2, GPIOC);
   fillTouchMeasure(touch_measure_list+3, GPIOD);
   fillTouchMeasure(touch_measure_list+4, GPIOE);
+
+
+  
 }
 
 /*================================================*/
@@ -338,15 +355,30 @@ void signalKeyPressEvent(int key)
   Serial.print(" Key ");
   Serial.print(key, DEC);
   Serial.print(" pressed\n");  
-  setRGB(0, 200, 0, 0);  
+
+  setRGB(key_to_LED_map[key], 200, 0, 100);  
+  current_key = key;
 }
 
 void signalKeyReleasedEvent(int key)
 {
   Serial.print("Key ");
   Serial.print(key, DEC);
-  Serial.print(" released\n");  
-  setRGB(0, 0, 0, 200);
+  Serial.print(" released ");  
+
+  for( int i = 0; i < TOUCH_KEY_CNT; i++ )
+  {
+    Serial.print(i, DEC);
+    Serial.print(":");
+    Serial.print(key_to_LED_map[i], DEC);
+    Serial.print(" ");
+  }
+
+  Serial.print("\n");
+
+  
+  setRGB(key_to_LED_map[key], 10, 30, 10);  
+  current_key = -1;
 }
 
 /*
@@ -539,16 +571,85 @@ void setup(void) {
     
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(PA1, OUTPUT);
+  pinMode(PB5, OUTPUT);
+  pinMode(PB6, OUTPUT);
+  pinMode(PB7, OUTPUT);
+  pinMode(PB8, OUTPUT);
   pinMode(PB9, OUTPUT);
+
+
+  key_to_LED_map[0] = 56; 
+  key_to_LED_map[1] = 4;
+  key_to_LED_map[2] = 58;
+  key_to_LED_map[3] = 48; 
+  key_to_LED_map[4] = 7;
 
 }
 
-uint16_t port_touch_capacitance[16];
+
+int learn_key_led_map()
+{
+  static uint8_t led_number = 0;
+  static uint32_t t = 0;
+  static int state = 0; 
+  if ( led_number >= 64 )
+    return 1; // learn mode done
+  switch(state)
+  {
+    case 0:
+      t = millis();
+      setRGB(led_number, 0, 200, 0);  
+      state = 1;
+      break;
+    case 1:  // wait for keypress or timeout
+      if ( current_key >= 0 )
+      {
+        key_to_LED_map[current_key] = led_number;
+        state = 2;
+        setRGB(led_number, 100, 100, 100);
+      }
+      else if ( (millis() - t) > 2000 )
+      {
+        setRGB(led_number, 0, 0, 0);  
+        led_number++;
+        state = 0; 
+      }
+      break;
+     case 2:
+        if ( current_key == -1 )
+        {
+          setRGB(led_number, 0, 0, 0);  
+          led_number++;
+          state = 0;         
+        }
+        break;
+  }
+  return 0;
+}
+
+
+
+//uint16_t port_touch_capacitance[16];
+
+
+#define MASTER_MODE_NONE 0
+#define MASTER_MODE_LEARN_KEY_LED_MAP 1
+
+//uint8_t master_mode = MASTER_MODE_LEARN_KEY_LED_MAP;
+uint8_t master_mode = MASTER_MODE_NONE;
 
 // the loop function runs over and over again forever
 void loop() {
   updateTouchKeys();
   sendLEDMatrix();
+
+  switch(master_mode)
+  {
+    case MASTER_MODE_LEARN_KEY_LED_MAP:
+      if ( learn_key_led_map() != 0 )
+        master_mode = MASTER_MODE_NONE;
+      break;
+  }
   
   //digitalWrite(PA1, HIGH);   // turn the LED on (HIGH is the voltage level)
   //delay(100);                       // wait for a second
