@@ -1,6 +1,13 @@
 /*
-  touch_keys.ino
 
+  touch_keys.ino
+  
+  
+  Includes:
+    - WS2812
+    - Sensor key read
+    - Sensor key mapping and learn mode
+    
 */
 
 /*================================================*/
