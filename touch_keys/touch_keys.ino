@@ -263,6 +263,7 @@ void setHSV(uint8_t pos, uint8_t h, uint8_t s, uint8_t v)
 
 #define TOUCH_KEY_MIN_TH_DELTA_CAP 6
 
+/* list of all GPIO lines, used as a sensor key */
 struct touch_status_struct {
   GPIO_TypeDef *gpio; /* e.g. GPIOB */
   uint16_t pin;   /* pin number within that GPIO block (0..15) */
@@ -272,6 +273,7 @@ struct touch_status_struct {
   uint32_t time;
 };
 
+/* helper struct, used to measure up to 16 GPIO lines. This struct will refer to "touch_status_struct" */
 struct touch_measure_struct {
   GPIO_TypeDef *gpio; /* e.g. GPIOB */
   uint16_t mask;    /* each set pin means, that this GPIO should be considered */
@@ -293,9 +295,10 @@ struct touch_status_struct touch_status_list[TOUCH_KEY_CNT] =  {
   { GPIOB, 9, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
 };
 
+/* maps a key (index into touch_status_list) to a RGB LED number */
 int key_to_LED_map[TOUCH_KEY_CNT];
 
-volatile int current_key = -1; // contains the current pressed key as global variable
+volatile int current_key = -1; // contains the current pressed key as global variable, assigned in signalKeyPressEvent() and signalKeyReleasedEvent() procedures.
 
 #define TOUCH_MEASURE_CNT 5 /* GPIOA .. GPIOE */
 struct touch_measure_struct touch_measure_list[TOUCH_MEASURE_CNT];
@@ -306,6 +309,12 @@ uint16_t touch_io_sample_array[TOUCH_IO_SAMPLE_COUNT];
 
 
 /*================================================*/
+/*
+  the following two procedures will
+    - establish the links between "touch_measure_list" and "touch_status_list"
+    - clear key_to_LED_map
+*/
+
 
 void fillTouchMeasure(struct touch_measure_struct *m, GPIO_TypeDef *gpio)
 {
@@ -336,10 +345,7 @@ void buildTouchMeasureList(void)
   fillTouchMeasure(touch_measure_list+1, GPIOB);
   fillTouchMeasure(touch_measure_list+2, GPIOC);
   fillTouchMeasure(touch_measure_list+3, GPIOD);
-  fillTouchMeasure(touch_measure_list+4, GPIOE);
-
-
-  
+  fillTouchMeasure(touch_measure_list+4, GPIOE);  
 }
 
 /*================================================*/
@@ -382,10 +388,11 @@ void signalKeyReleasedEvent(int key)
 }
 
 /*
- Update status of one key, based on the current measured capacitance value
- key is an index into "touch_status_list" array (0 .. TOUCH_KEY_CNT-1].
- Status is updated within "touch_status_list".
- updateTouchStatus() is called by updateTouchKeys().
+  Update status of one key, based on the current measured capacitance value
+  key is an index into "touch_status_list" array (0 .. TOUCH_KEY_CNT-1].
+  Status is updated within "touch_status_list".
+ 
+  updateTouchStatus() is called by updateTouchKeys().
 */
 void updateTouchStatus(int key, uint16_t cap)
 {
@@ -469,8 +476,21 @@ uint32_t getTo0PosByBinarySearch(uint16_t mask)
   return l;
 }
 
+
+
 /*
- selectMask: consider only pins where the bit is set inside mask
+
+  Measure the capacitance at the touch sensor keys. Do this for the specified port. Selected pins of that port are measured in parallel.
+
+  Args:
+    gpio: GPIO port for which the measure should happen
+    selectMask: consider only pins where the bit is set inside mask
+    changeTo0Cnt: For each of the selected GPIO ports of selected GPIO block, this will contain the 1-0 transition time. 
+      A key is detected if this 1-0 transition time is small.
+      
+  Called by
+    updateTouchKeys()
+  
 */
 void getTouchCapForPortPins(GPIO_TypeDef *gpio, uint16_t selectMask, uint16_t changeTo0Cnt[16])
 {
@@ -532,6 +552,15 @@ void getTouchCapForPortPins(GPIO_TypeDef *gpio, uint16_t selectMask, uint16_t ch
 
 /*================================================*/
 
+/*
+  void updateTouchKeys(void)
+  
+  Calculate the status of all touch senser keys.
+  This will call signalKeyPressEvent() and signalKeyReleasedEvent() procedures.
+
+
+  
+*/
 void updateTouchKeys(void)
 {
   uint16_t changeTo0Cnt[16];
