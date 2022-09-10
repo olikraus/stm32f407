@@ -7,7 +7,21 @@
     - WS2812
     - Sensor key read
     - Sensor key mapping and learn mode
-    
+
+  Linux:
+    stty -F /dev/ttyUSB0 sane 115200 && cat /dev/ttyUSB0
+    or stty -F /dev/ttyUSB0 sane 115200 igncr  && cat /dev/ttyUSB0
+    screen /dev/ttyUSB0  115200 (terminate with "C-a k" or "C-a \")
+    minicom -D /dev/ttyUSB0  -b 115200 (terminate with "C-a x", change CR mode: "C-a u", disable HW control flow!)
+
+  --> 9600
+
+  Unusable Ports:
+  A0, A1, A7, A9, A10, A11, A12, A13, A14
+  PB12 seems to  have a high 
+
+  ToDo: Activate C13, but then all keys will change 
+
 */
 
 /*================================================*/
@@ -268,7 +282,7 @@ void setHSV(uint8_t pos, uint8_t h, uint8_t s, uint8_t v)
 #define TOUCH_KEY_STATUS_PRESSED 10
 #define TOUCH_KEY_STATUS_PR_DEBOUNCE1 11
 
-#define TOUCH_KEY_MIN_TH_DELTA_CAP 6
+#define TOUCH_KEY_MIN_TH_DELTA_CAP 12
 
 /* list of all GPIO lines, used as a sensor key */
 struct touch_status_struct {
@@ -293,14 +307,102 @@ struct touch_measure_struct {
 
 /* global variables */
 
-#define TOUCH_KEY_CNT 5
-struct touch_status_struct touch_status_list[TOUCH_KEY_CNT] =  {
+/*
+  the touch status list contains a list of all possible sensor inputs
+  some of the ports can be commented if they are used for otherwise
+*/
+struct touch_status_struct touch_status_list[] =  {
+  //{ GPIOA, 0, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  //{ GPIOA, 1, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},  
+  { GPIOA, 2, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOA, 3, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOA, 4, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOA, 5, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOA, 6, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  //{ GPIOA, 7, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},  // MOSI for LED matrix
+  { GPIOA, 8, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  //{ GPIOA, 9, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},    // for USART, not on header
+  //{ GPIOA, 10, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},   // for USART, not on header
+  
+  //{ GPIOA, 11, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},   // for USART
+  //{ GPIOA, 12, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},   // for USART
+  //{ GPIOA, 13, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},  // not on header
+  //{ GPIOA, 14, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},   // not on header
+  { GPIOA, 15, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+
+  { GPIOB, 0, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 1, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  //{ GPIOB, 2, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 3, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  //{ GPIOB, 4, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  
   { GPIOB, 5, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOB, 7, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
   { GPIOB, 6, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 7, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
   { GPIOB, 8, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
   { GPIOB, 9, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 10, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 11, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 12, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 13, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 14, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 15, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  
+  { GPIOC, 0, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 1, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 2, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 3, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 4, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 5, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 6, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 7, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 8, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 9, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 10, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 11, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 12, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 13, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0}, 
+  //{ GPIOC, 14, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},  // not available on Header
+  //{ GPIOC, 15, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0}, // not available on Header
+
+  { GPIOD, 0, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 1, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 2, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 3, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 4, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 5, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 6, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 7, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 8, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 9, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 10, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 11, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 12, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 13, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 14, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 15, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+
+  { GPIOE, 0, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 1, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 2, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 3, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 4, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 5, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 6, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 7, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 8, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 9, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 10, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 11, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 12, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 13, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 14, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 15, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  
 };
+
+#define TOUCH_KEY_CNT (sizeof(touch_status_list)/sizeof(struct touch_status_struct))
+//#define TOUCH_KEY_CNT 5
 
 /* maps a key (index into touch_status_list) to a RGB LED number */
 int key_to_LED_map[TOUCH_KEY_CNT];
@@ -355,16 +457,31 @@ void buildTouchMeasureList(void)
   fillTouchMeasure(touch_measure_list+4, GPIOE);  
 }
 
+/*
+  get the key for a given led
+  return -1 if the led can not be controlled
+*/
+int get_key_by_led(int led)
+{
+  int i;
+  for( i = 0; i < TOUCH_KEY_CNT; i++ )
+    if ( key_to_LED_map[i] == led )
+      return i;
+  return -1;
+}
+
 /*================================================*/
 
 
-void signalKeyPressEvent(int key)
+void signalKeyPressEvent(int key, uint16_t cap)
 {
 
   Serial.print("min cap=");
   Serial.print(touch_status_list[key].min_cap, DEC);
   Serial.print(" threshold=");
   Serial.print(touch_status_list[key].threshold_cap, DEC);
+  Serial.print(" current cap=");
+  Serial.print(cap, DEC);
   Serial.print(" Key ");
   Serial.print(key, DEC);
   Serial.print(" pressed\n");  
@@ -390,7 +507,7 @@ void signalKeyReleasedEvent(int key)
   Serial.print("\n");
 
   
-  setRGB(key_to_LED_map[key], 10, 30, 10);  
+  setRGB(key_to_LED_map[key], 0, 20, 0);  
   current_key = -1;
 }
 
@@ -414,6 +531,7 @@ void updateTouchStatus(int key, uint16_t cap)
     s->min_cap = cap;
   }
   s->threshold_cap = s->min_cap + TOUCH_KEY_MIN_TH_DELTA_CAP;
+  
   switch(s->status)
   {
     case TOUCH_KEY_STATUS_RELEASED:
@@ -425,7 +543,7 @@ void updateTouchStatus(int key, uint16_t cap)
       {
         s->status = TOUCH_KEY_STATUS_PRESSED;
         s->time = millis();
-        signalKeyPressEvent(key);
+        signalKeyPressEvent(key, cap);
       }
       else
         s->status = TOUCH_KEY_STATUS_RELEASED;
@@ -602,24 +720,240 @@ void setup(void) {
   }
   */
 
+  Serial.println("buildTouchMeasureList");
   buildTouchMeasureList();
+  
+  Serial.println("initLEDMatrix");
   initLEDMatrix();
     
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(PA1, OUTPUT);
+
+  pinMode(PA2, OUTPUT);
+  pinMode(PA3, OUTPUT);
+  pinMode(PA4, OUTPUT);
+  pinMode(PA5, OUTPUT);
+  pinMode(PA6, OUTPUT);
+  
+  // pinMode(PA7, OUTPUT); // MOSI for LED matrix
+  pinMode(PA8, OUTPUT);
+  //pinMode(PA9, OUTPUT); // not on header
+  //pinMode(PA10, OUTPUT); // not on header
+  
+  //pinMode(PA11, OUTPUT); // breaks USART
+  //pinMode(PA12, OUTPUT); // breaks USART
+  //pinMode(PA13, OUTPUT); // not on header
+  //pinMode(PA14, OUTPUT); // not on header
+  pinMode(PA15, OUTPUT);
+
+  pinMode(PB0, OUTPUT);
+  pinMode(PB1, OUTPUT);
+  //pinMode(PB2, OUTPUT);
+  pinMode(PB3, OUTPUT);
+  //pinMode(PB4, OUTPUT);
   pinMode(PB5, OUTPUT);
   pinMode(PB6, OUTPUT);
   pinMode(PB7, OUTPUT);
   pinMode(PB8, OUTPUT);
   pinMode(PB9, OUTPUT);
+  pinMode(PB10, OUTPUT);
+  pinMode(PB11, OUTPUT);
+  pinMode(PB12, OUTPUT);
+  pinMode(PB13, OUTPUT);
+  pinMode(PB14, OUTPUT);
+  pinMode(PB15, OUTPUT);
 
+  pinMode(PC0, OUTPUT);
+  pinMode(PC1, OUTPUT);
+  pinMode(PC2, OUTPUT);
+  pinMode(PC3, OUTPUT);
+  pinMode(PC4, OUTPUT);
+  pinMode(PC5, OUTPUT);
+  pinMode(PC6, OUTPUT);
+  pinMode(PC7, OUTPUT);
+  pinMode(PC8, OUTPUT);
+  pinMode(PC9, OUTPUT);
+  pinMode(PC10, OUTPUT);
+  pinMode(PC11, OUTPUT);
+  pinMode(PC12, OUTPUT);
+  pinMode(PC13, OUTPUT);
+  //pinMode(PC14, OUTPUT);
+  //pinMode(PC15, OUTPUT);
 
-  key_to_LED_map[0] = 56; 
-  key_to_LED_map[1] = 4;
-  key_to_LED_map[2] = 58;
-  key_to_LED_map[3] = 48; 
+  pinMode(PD0, OUTPUT);
+  pinMode(PD1, OUTPUT);
+  pinMode(PD2, OUTPUT);
+  pinMode(PD3, OUTPUT);
+  pinMode(PD4, OUTPUT);
+  pinMode(PD5, OUTPUT);
+  pinMode(PD6, OUTPUT);
+  pinMode(PD7, OUTPUT);
+  pinMode(PD8, OUTPUT);
+  pinMode(PD9, OUTPUT);
+  pinMode(PD10, OUTPUT);
+  pinMode(PD11, OUTPUT);
+  pinMode(PD12, OUTPUT);
+  pinMode(PD13, OUTPUT);
+  pinMode(PD14, OUTPUT);
+  pinMode(PD15, OUTPUT);
+
+  pinMode(PE0, OUTPUT);
+  pinMode(PE1, OUTPUT);
+  pinMode(PE2, OUTPUT);
+  pinMode(PE3, OUTPUT);
+  pinMode(PE4, OUTPUT);
+  pinMode(PE5, OUTPUT);
+  pinMode(PE6, OUTPUT);
+  pinMode(PE7, OUTPUT);
+  pinMode(PE8, OUTPUT);
+  pinMode(PE9, OUTPUT);
+  pinMode(PE10, OUTPUT);
+  pinMode(PE11, OUTPUT);
+  pinMode(PE12, OUTPUT);
+  pinMode(PE13, OUTPUT);
+  pinMode(PE14, OUTPUT);
+  pinMode(PE15, OUTPUT);
+
+/*
+  key_to_LED_map[0] = 36;
+  key_to_LED_map[1] = 51;
+  key_to_LED_map[2] = 21;
+  key_to_LED_map[3] = 25;
   key_to_LED_map[4] = 7;
+  key_to_LED_map[5] = 20;
+  key_to_LED_map[6] = 17;
+  key_to_LED_map[7] = 44;
+  key_to_LED_map[8] = 59;
+  key_to_LED_map[9] = 8;
+  key_to_LED_map[10] = 56;
+  key_to_LED_map[11] = 58;
+  key_to_LED_map[12] = 4;
+  key_to_LED_map[13] = 48;
+  key_to_LED_map[14] = 7;
+  key_to_LED_map[15] = 49;
+  key_to_LED_map[16] = 19;
+  key_to_LED_map[17] = 55;      // critical, cap very low
+  key_to_LED_map[18] = 63;
+  key_to_LED_map[19] = 2;
+  key_to_LED_map[20] = -1;
+  key_to_LED_map[21] = 22;
+  key_to_LED_map[22] = 41;
+  key_to_LED_map[23] = 28;
+  key_to_LED_map[24] = 5;
+  key_to_LED_map[25] = 46;
+  key_to_LED_map[26] = 11;
+  key_to_LED_map[27] = 57;
+  key_to_LED_map[28] = 31;
+  key_to_LED_map[29] = 12;
+  key_to_LED_map[30] = 27;
+  key_to_LED_map[31] = 14;
+  key_to_LED_map[32] = 24;
+  key_to_LED_map[33] = 38;
+  
+  key_to_LED_map[34] = 62;
+  key_to_LED_map[35] = 32;
+  key_to_LED_map[36] = 37;
+  key_to_LED_map[37] = 40;
+  key_to_LED_map[38] = 42;
+  key_to_LED_map[39] = 15;
+  key_to_LED_map[40] = 26;
+  key_to_LED_map[41] = 9;
+  key_to_LED_map[42] = -1;
+  key_to_LED_map[43] = 16;
+  key_to_LED_map[44] = -1;
+  key_to_LED_map[45] = 45;
+  key_to_LED_map[46] = 3;
+  key_to_LED_map[47] = 30;
+  key_to_LED_map[48] = 0;
+  key_to_LED_map[49] = 53;
+  key_to_LED_map[50] = -1;
+  key_to_LED_map[51] = -1;
+  key_to_LED_map[52] = 52;
+  key_to_LED_map[53] = 39;
+  key_to_LED_map[54] = 10;
+  key_to_LED_map[55] = 47;
+  key_to_LED_map[56] = 6;
+  key_to_LED_map[57] = 50;
+  key_to_LED_map[58] = 1;
+  key_to_LED_map[59] = 43;
+  key_to_LED_map[60] = 23;
+  key_to_LED_map[61] = 18;
+  key_to_LED_map[62] = 13;
+  key_to_LED_map[63] = 29;
+  key_to_LED_map[64] = 54;
+  key_to_LED_map[65] = 60;
+*/
 
+  key_to_LED_map[0] = 36;
+  key_to_LED_map[1] = 51;
+  key_to_LED_map[2] = 21;
+  key_to_LED_map[3] = 25;
+  key_to_LED_map[4] = 7;
+  key_to_LED_map[5] = 20;
+  key_to_LED_map[6] = 17;
+  key_to_LED_map[7] = 44;
+  key_to_LED_map[8] = 59;
+  key_to_LED_map[9] = 8;
+  key_to_LED_map[10] = 56;
+  key_to_LED_map[11] = 58;
+  key_to_LED_map[12] = 4;
+  key_to_LED_map[13] = 48;
+  key_to_LED_map[14] = 7;
+  key_to_LED_map[15] = 49;
+  key_to_LED_map[16] = 19;
+  key_to_LED_map[17] = -1;
+  key_to_LED_map[18] = 63;
+  key_to_LED_map[19] = 55;
+  key_to_LED_map[20] = -1;
+  key_to_LED_map[21] = 22;
+  key_to_LED_map[22] = 41;
+  key_to_LED_map[23] = 28;
+  key_to_LED_map[24] = 5;
+  key_to_LED_map[25] = 46;
+key_to_LED_map[26] = 11;
+key_to_LED_map[27] = 57;
+key_to_LED_map[28] = 31;
+key_to_LED_map[29] = 12;
+key_to_LED_map[30] = 27;
+key_to_LED_map[31] = 14;
+key_to_LED_map[32] = 24;
+key_to_LED_map[33] = 38;
+key_to_LED_map[34] = 2;
+key_to_LED_map[35] = 62;
+key_to_LED_map[36] = 32;
+key_to_LED_map[37] = 37;
+key_to_LED_map[38] = 40;
+key_to_LED_map[39] = 42;
+key_to_LED_map[40] = 15;
+key_to_LED_map[41] = 26;
+key_to_LED_map[42] = 9;
+key_to_LED_map[43] = -1;
+key_to_LED_map[44] = 16;
+key_to_LED_map[45] = -1;
+key_to_LED_map[46] = 45;
+key_to_LED_map[47] = 3;
+key_to_LED_map[48] = 30;
+key_to_LED_map[49] = 0;
+key_to_LED_map[50] = 53;
+key_to_LED_map[51] = -1;
+key_to_LED_map[52] = -1;
+key_to_LED_map[53] = 52;
+key_to_LED_map[54] = 39;
+key_to_LED_map[55] = 10;
+key_to_LED_map[56] = 47;
+key_to_LED_map[57] = 6;
+key_to_LED_map[58] = 50;
+key_to_LED_map[59] = 1;
+key_to_LED_map[60] = 43;
+key_to_LED_map[61] = 23;
+key_to_LED_map[62] = 18;
+key_to_LED_map[63] = 13;
+key_to_LED_map[64] = 29;
+key_to_LED_map[65] = 54;
+key_to_LED_map[66] = 60;
+
+
+  Serial.println("setup done");
 }
 
 
@@ -628,13 +962,21 @@ int learn_key_led_map()
   static uint8_t led_number = 0;
   static uint32_t t = 0;
   static int state = 0; 
+  static uint32_t wait_time_ms = 4000;
+
+  /* find the next unassigned led */
+  while( get_key_by_led(led_number) >= 0 )
+    led_number++;
+  
   if ( led_number >= 64 )
     return 1; // learn mode done
   switch(state)
   {
     case 0:
       t = millis();
-      setRGB(led_number, 0, 200, 0);  
+      setRGB(led_number, 200, 200, 0);  
+      Serial.print("led_number=");
+      Serial.println(led_number, DEC);
       state = 1;
       break;
     case 1:  // wait for keypress or timeout
@@ -642,9 +984,9 @@ int learn_key_led_map()
       {
         key_to_LED_map[current_key] = led_number;
         state = 2;
-        setRGB(led_number, 100, 100, 100);
+        setRGB(led_number, 100, 100, 200);
       }
-      else if ( (millis() - t) > 2000 )
+      else if ( (millis() - t) > wait_time_ms )
       {
         setRGB(led_number, 0, 0, 0);  
         led_number++;
@@ -671,8 +1013,8 @@ int learn_key_led_map()
 #define MASTER_MODE_NONE 0
 #define MASTER_MODE_LEARN_KEY_LED_MAP 1
 
-//uint8_t master_mode = MASTER_MODE_LEARN_KEY_LED_MAP;
-uint8_t master_mode = MASTER_MODE_NONE;
+uint8_t master_mode = MASTER_MODE_LEARN_KEY_LED_MAP;
+//uint8_t master_mode = MASTER_MODE_NONE;
 
 // the loop function runs over and over again forever
 void loop() {
@@ -687,10 +1029,10 @@ void loop() {
       break;
   }
   
-  //digitalWrite(PA1, HIGH);   // turn the LED on (HIGH is the voltage level)
-  //delay(100);                       // wait for a second
-  //digitalWrite(PA1, LOW);    // turn the LED off by making the voltage LOW
-  //delay(100);                       // wait for a second
+  digitalWrite(PA1, HIGH);   // turn the LED on (HIGH is the voltage level)
+  delay(50);                       // wait 
+  digitalWrite(PA1, LOW);    // turn the LED off by making the voltage LOW
+  delay(50);                       // wait 
   
   //getTouchCapForPortPins(GPIOB, (1<<9), port_touch_capacitance);
   //Serial.print(" port_touch_capacitance[9]=");
