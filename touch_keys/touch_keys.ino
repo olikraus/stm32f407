@@ -16,13 +16,17 @@
 
   --> 9600
 
-  Unusable Ports:
-  A0, A1, A7, A9, A10, A11, A12, 
+  Ports:
+  A0,   User Button
+  A1,   User LED
+  A7, --> SPI1 MOSI, used for LED Matrix
+  A9, A10, A11, A12, 
   A13  SWDIO
   A14  SWCLK
-  PB12 seems to  have a resistor towards GND
-
-  ToDo: Activate C13, but then all keys will change 
+  PB12 seems to  have a resistor towards GND  --> Not used
+  C14, C15 --> not on header
+  
+  Ports not listed above are part of the sensor input
 
 */
 
@@ -475,6 +479,13 @@ int get_key_by_led(int led)
 /*================================================*/
 
 
+/*
+
+  void signalKeyPressEvent(int key, uint16_t cap)
+
+  called by updateTouchStatus(), which is called by updateTouchKeys().
+
+*/
 void signalKeyPressEvent(int key, uint16_t cap)
 {
 
@@ -492,6 +503,13 @@ void signalKeyPressEvent(int key, uint16_t cap)
   current_key = key;
 }
 
+/*
+
+  void signalKeyReleasedEvent(int key)
+
+  called by updateTouchStatus(), which is called by updateTouchKeys().
+
+*/
 void signalKeyReleasedEvent(int key)
 {
   Serial.print("Key ");
@@ -577,12 +595,15 @@ void updateTouchStatus(int key, uint16_t cap)
 
  Do a binary search in the global iosample array.
  Look for a 1 to 0 transition and return the position of the 1-0 transition (the first 0 value)
- mask: only one bit should be set here, which must be the bit for which the 1 to 0 transition will be searched
+ mask: only one bit should be set here, 
+  which must be the bit for which the 1 to 0 transition will be searched
 
  returns:
   0 if all bits are 0
   1..TOUCH_IO_SAMPLE_COUNT-1 for the initial number of 1 found
   TOUCH_IO_SAMPLE_COUNT if all bits are 1
+
+  called by getTouchCapForPortPins()
 
 */
 uint32_t getTo0PosByBinarySearch(uint16_t mask)
@@ -607,7 +628,8 @@ uint32_t getTo0PosByBinarySearch(uint16_t mask)
 
 /*
 
-  Measure the capacitance at the touch sensor keys. Do this for the specified port. Selected pins of that port are measured in parallel.
+  Measure the capacitance at the touch sensor keys. 
+  Do this for the specified port. Selected pins of that port are measured in parallel.
 
   Args:
     gpio: GPIO port for which the measure should happen
@@ -684,8 +706,6 @@ void getTouchCapForPortPins(GPIO_TypeDef *gpio, uint16_t selectMask, uint16_t ch
   
   Calculate the status of all touch senser keys.
   This will call signalKeyPressEvent() and signalKeyReleasedEvent() procedures.
-
-
   
 */
 void updateTouchKeys(void)
@@ -707,6 +727,27 @@ void updateTouchKeys(void)
   }
 }
 
+/*================================================*/
+
+/* graph element struct (actually it is the edge of the ikosidodecaeder */
+struct ge_struct
+{
+  int key;              // LED can be derived via key_to_LED_map[key]
+  int next[6];          // each ikosidodecaeder has six neighbors
+};
+
+struct ge_struct gel[60];
+
+/*
+  Learn algo:
+    show a ge, let user choose the most right neighbor for each pentagon --> next[5]
+    show a ge, let user choose the most right neighbor for each triangle --> next[2]
+    For the next[5], next[0] will be the shown ge
+    later:
+      for( i = 0; i < 60; i++)
+        gel[gel[i].next[5]].next[0] = i;
+
+*/
 
 
 /*================================================*/
