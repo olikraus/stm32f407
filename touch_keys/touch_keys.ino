@@ -747,6 +747,11 @@ struct ge_struct gel[60];
       for( i = 0; i < 60; i++)
         gel[gel[i].next[5]].next[0] = i;
 
+      next[4] = next[5].next[2]
+      next[1] = next[0].next[3]
+
+
+
 */
 
 
