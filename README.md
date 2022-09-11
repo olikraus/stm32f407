@@ -31,21 +31,14 @@ Arduino Pin Numbers:
  PA4             
  PA5             
  PA6             
- PA7 SPI1_MOSI
- 
+ PA7 SPI1_MOSI  
  PA8             
- PA9 USART1_TX          
- 
- PA10 USART1_RX
- 
- PA11 USART1_CTS
- 
- PA12 USART1_RTS
- 
+ PA9 USART1_TX            
+ PA10 USART1_RX  
+ PA11 USART1_CTS  
+ PA12 USART1_RTS  
  PA13 SWDIO         
- 
- PA14 SWDCLK
- 
+ PA14 SWDCLK  
  PA15           
  PB0             
  PB1             
