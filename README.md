@@ -22,21 +22,21 @@ STM32duino Project (https://github.com/stm32duino/Arduino_Core_STM32):
 
 Arduino Pin Numbers:
 
- PA0             
- PA1             
+ PA0 Button K1
+ PA1 LED D2
  PA2             
- PA3             
+ PA3 
  PA4             
  PA5             
  PA6             
- PA7             
+ PA7 SPI1_MOSI
  PA8             
- PA9             
- PA10           
- PA11           
- PA12           
- PA13           
- PA14           
+ PA9 USART1_TX          
+ PA10 USART1_RX
+ PA11 USART1_CTS
+ PA12 USART1_RTS
+ PA13 SWDIO         
+ PA14 SWDCLK
  PA15           
  PB0             
  PB1             

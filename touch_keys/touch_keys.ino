@@ -17,8 +17,10 @@
   --> 9600
 
   Unusable Ports:
-  A0, A1, A7, A9, A10, A11, A12, A13, A14
-  PB12 seems to  have a high 
+  A0, A1, A7, A9, A10, A11, A12, 
+  A13  SWDIO
+  A14  SWCLK
+  PB12 seems to  have a resistor towards GND
 
   ToDo: Activate C13, but then all keys will change 
 
@@ -326,8 +328,8 @@ struct touch_status_struct touch_status_list[] =  {
   
   //{ GPIOA, 11, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},   // for USART
   //{ GPIOA, 12, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},   // for USART
-  //{ GPIOA, 13, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},  // not on header
-  //{ GPIOA, 14, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},   // not on header
+  //{ GPIOA, 13, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},  // SWDIO
+  //{ GPIOA, 14, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},   // SWDCLK
   { GPIOA, 15, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
 
   { GPIOB, 0, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
@@ -814,75 +816,6 @@ void setup(void) {
   pinMode(PE14, OUTPUT);
   pinMode(PE15, OUTPUT);
 
-/*
-  key_to_LED_map[0] = 36;
-  key_to_LED_map[1] = 51;
-  key_to_LED_map[2] = 21;
-  key_to_LED_map[3] = 25;
-  key_to_LED_map[4] = 7;
-  key_to_LED_map[5] = 20;
-  key_to_LED_map[6] = 17;
-  key_to_LED_map[7] = 44;
-  key_to_LED_map[8] = 59;
-  key_to_LED_map[9] = 8;
-  key_to_LED_map[10] = 56;
-  key_to_LED_map[11] = 58;
-  key_to_LED_map[12] = 4;
-  key_to_LED_map[13] = 48;
-  key_to_LED_map[14] = 7;
-  key_to_LED_map[15] = 49;
-  key_to_LED_map[16] = 19;
-  key_to_LED_map[17] = 55;      // critical, cap very low
-  key_to_LED_map[18] = 63;
-  key_to_LED_map[19] = 2;
-  key_to_LED_map[20] = -1;
-  key_to_LED_map[21] = 22;
-  key_to_LED_map[22] = 41;
-  key_to_LED_map[23] = 28;
-  key_to_LED_map[24] = 5;
-  key_to_LED_map[25] = 46;
-  key_to_LED_map[26] = 11;
-  key_to_LED_map[27] = 57;
-  key_to_LED_map[28] = 31;
-  key_to_LED_map[29] = 12;
-  key_to_LED_map[30] = 27;
-  key_to_LED_map[31] = 14;
-  key_to_LED_map[32] = 24;
-  key_to_LED_map[33] = 38;
-  
-  key_to_LED_map[34] = 62;
-  key_to_LED_map[35] = 32;
-  key_to_LED_map[36] = 37;
-  key_to_LED_map[37] = 40;
-  key_to_LED_map[38] = 42;
-  key_to_LED_map[39] = 15;
-  key_to_LED_map[40] = 26;
-  key_to_LED_map[41] = 9;
-  key_to_LED_map[42] = -1;
-  key_to_LED_map[43] = 16;
-  key_to_LED_map[44] = -1;
-  key_to_LED_map[45] = 45;
-  key_to_LED_map[46] = 3;
-  key_to_LED_map[47] = 30;
-  key_to_LED_map[48] = 0;
-  key_to_LED_map[49] = 53;
-  key_to_LED_map[50] = -1;
-  key_to_LED_map[51] = -1;
-  key_to_LED_map[52] = 52;
-  key_to_LED_map[53] = 39;
-  key_to_LED_map[54] = 10;
-  key_to_LED_map[55] = 47;
-  key_to_LED_map[56] = 6;
-  key_to_LED_map[57] = 50;
-  key_to_LED_map[58] = 1;
-  key_to_LED_map[59] = 43;
-  key_to_LED_map[60] = 23;
-  key_to_LED_map[61] = 18;
-  key_to_LED_map[62] = 13;
-  key_to_LED_map[63] = 29;
-  key_to_LED_map[64] = 54;
-  key_to_LED_map[65] = 60;
-*/
 
   key_to_LED_map[0] = 36;
   key_to_LED_map[1] = 51;
