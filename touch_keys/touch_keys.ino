@@ -26,13 +26,13 @@
   PB12 seems to  have a resistor towards GND  --> Not used
   C14, C15 --> not on header
   
+  Currently unused: B12 B15 D8 D10 E0 E1
+  
   Ports not listed above are part of the sensor input
 
 */
 
 /*================================================*/
-
-
 /*
 
   SystemCoreClock: 168 MHz
@@ -232,6 +232,14 @@ void setRGB(uint8_t pos, uint8_t r, uint8_t g, uint8_t b)
   }
 }
 
+void clearRGBMatrix(void)
+{
+  for( uint8_t i = 0; i < 64; i++ )
+  {
+    setRGB(i, 0, 0, 0);
+  }  
+}
+
 /* https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both */
 void hsv_to_rgb(uint8_t h, uint8_t s, uint8_t v, uint8_t *r, uint8_t *g, uint8_t *b)
 {
@@ -288,6 +296,11 @@ void setHSV(uint8_t pos, uint8_t h, uint8_t s, uint8_t v)
 #define TOUCH_KEY_STATUS_PRESSED 10
 #define TOUCH_KEY_STATUS_PR_DEBOUNCE1 11
 
+/* 
+  the following value defines the sensitivity 
+  higher values: less sensitive 
+  lower values: more sensitive, but risk of faulty detects
+*/
 #define TOUCH_KEY_MIN_TH_DELTA_CAP 12
 
 /* list of all GPIO lines, used as a sensor key */
@@ -411,7 +424,17 @@ struct touch_status_struct touch_status_list[] =  {
 //#define TOUCH_KEY_CNT 5
 
 /* maps a key (index into touch_status_list) to a RGB LED number */
-int key_to_LED_map[TOUCH_KEY_CNT];
+
+//int16_t key_to_LED_map[TOUCH_KEY_CNT];  // assign all zeros, this will enforce a complete reset of the assignment
+
+int16_t key_to_LED_map[TOUCH_KEY_CNT]={
+/*0:*/36,51,21,25,-1,20,17,44,59,8,
+/*10:*/56,58,4,48,7,49,19,-1,63,55,
+/*20:*/-1,22,41,28,5,46,11,57,31,12,
+/*30:*/27,14,24,38,2,62,32,37,40,42,
+/*40:*/15,26,9,-1,16,-1,45,3,30,0,
+/*50:*/53,-1,-1,52,39,10,47,6,50,1,
+/*60:*/43,23,18,13,29,54,60};  
 
 volatile int current_key = -1; // contains the current pressed key as global variable, assigned in signalKeyPressEvent() and signalKeyReleasedEvent() procedures.
 
@@ -425,9 +448,7 @@ uint16_t touch_io_sample_array[TOUCH_IO_SAMPLE_COUNT];
 
 /*================================================*/
 /*
-  the following two procedures will
-    - establish the links between "touch_measure_list" and "touch_status_list"
-    - clear key_to_LED_map
+  the following two procedures will establish the links between "touch_measure_list" and "touch_status_list"
 */
 
 
@@ -452,9 +473,11 @@ void fillTouchMeasure(struct touch_measure_struct *m, GPIO_TypeDef *gpio)
 
 void buildTouchMeasureList(void)
 {
+  /*
   int i;
   for( i = 0; i < TOUCH_KEY_CNT; i++ )
     key_to_LED_map[i] = -1;
+  */
 
   fillTouchMeasure(touch_measure_list+0, GPIOA);
   fillTouchMeasure(touch_measure_list+1, GPIOB);
@@ -467,13 +490,120 @@ void buildTouchMeasureList(void)
   get the key for a given led
   return -1 if the led can not be controlled
 */
-int get_key_by_led(int led)
+int getKeyByLED(int led)
 {
   int i;
   for( i = 0; i < TOUCH_KEY_CNT; i++ )
     if ( key_to_LED_map[i] == led )
       return i;
   return -1;
+}
+
+/*
+  removes duplicate enties from the key to LED mapping table
+*/
+void fixKeyToLEDMap(void)
+{
+  int16_t i, j, cnt;
+  int16_t led = -1;
+  for( i = 0; i < TOUCH_KEY_CNT; i++ )
+  {
+    if ( key_to_LED_map[i] >= 0 )
+    {
+      led = -1;
+      /* find duplicates */
+      for( j = i+1; j < TOUCH_KEY_CNT; j++ )
+      {
+        if ( key_to_LED_map[i] == key_to_LED_map[j] )
+        {
+          led = key_to_LED_map[i];
+          break;
+        }
+      }
+      /* any duplicates found? */
+      if ( led >= 0 )
+      {
+        /* erase duplicates */
+        cnt = 0;
+        for( j = 0; j < TOUCH_KEY_CNT; j++ )
+        {
+          if ( key_to_LED_map[j] == led )
+          {
+            key_to_LED_map[j] = -1;
+            cnt++;
+          }
+        }
+        Serial.print("fixKeyToLEDMap: Removed LED ");
+        Serial.print(led, DEC);
+        Serial.print(" cnt=");
+        Serial.print(cnt, DEC);
+        Serial.print("\n");
+      }
+    }
+  }
+}
+
+/*
+  returns the number of sensor keys assigned, should be 60 
+*/
+int16_t getAssignedKeyCount(void)
+{
+  int16_t i;
+  int16_t cnt = 0;
+  for( i = 0; i < TOUCH_KEY_CNT; i++ )
+    if ( key_to_LED_map[i] >= 0 )
+      cnt++;
+  return cnt;
+}
+
+/*
+    Output the current key to LED map status to serial port
+*/
+void showKeyMapStatus(void)
+{
+  int i;
+  
+  /* Print the key_to_LED_map: Can be copied to the code */
+  
+  Serial.print("int16_t key_to_LED_map[TOUCH_KEY_CNT]={");
+  for( i = 0; i < TOUCH_KEY_CNT; i++ )
+  {
+    if ( i % 10 == 0 )
+    {
+      Serial.print("/*");
+      Serial.print(i, DEC);
+      Serial.print(":*/");
+    }
+    Serial.print(key_to_LED_map[i], DEC);
+    if ( i+1 != TOUCH_KEY_CNT )
+      Serial.print(",");
+  }
+  Serial.print("};\n");
+
+  /* Print the total number of assigned keys */
+
+  Serial.print("Assigned keys: ");
+  Serial.print(getAssignedKeyCount(), DEC);
+  Serial.print("\n");  
+  
+  /* print a list of GPIOs, which are not assigned */
+  
+  Serial.print("Unassigned GPIOs: ");
+  for( i = 0; i < TOUCH_KEY_CNT; i++ )
+  {
+    if ( key_to_LED_map[i] < 0 )
+    {
+      if ( touch_status_list[i].gpio == GPIOA ) Serial.print("A");
+      else if ( touch_status_list[i].gpio == GPIOB ) Serial.print("B");
+      else if ( touch_status_list[i].gpio == GPIOC ) Serial.print("C");
+      else if ( touch_status_list[i].gpio == GPIOD ) Serial.print("D");
+      else if ( touch_status_list[i].gpio == GPIOE ) Serial.print("E");
+      else Serial.print("?");
+      Serial.print(touch_status_list[i].pin, DEC);
+      Serial.print(" ");
+    }
+  }  
+  Serial.print("\n");
 }
 
 /*================================================*/
@@ -503,6 +633,7 @@ void signalKeyPressEvent(int key, uint16_t cap)
   current_key = key;
 }
 
+
 /*
 
   void signalKeyReleasedEvent(int key)
@@ -514,18 +645,9 @@ void signalKeyReleasedEvent(int key)
 {
   Serial.print("Key ");
   Serial.print(key, DEC);
-  Serial.print(" released ");  
+  Serial.print(" released\n");  
 
-  for( int i = 0; i < TOUCH_KEY_CNT; i++ )
-  {
-    Serial.print(i, DEC);
-    Serial.print(":");
-    Serial.print(key_to_LED_map[i], DEC);
-    Serial.print(" ");
-  }
-
-  Serial.print("\n");
-
+  //showKeyMapStatus();
   
   setRGB(key_to_LED_map[key], 0, 20, 0);  
   current_key = -1;
@@ -728,20 +850,31 @@ void updateTouchKeys(void)
 }
 
 /*================================================*/
+/* Learn mode: Graph */
 
 /* graph element struct (actually it is the edge of the ikosidodecaeder */
 struct ge_struct
 {
-  int key;              // LED can be derived via key_to_LED_map[key]
-  int next[6];          // each ikosidodecaeder has six neighbors
+  int16_t led;               // key can be derived with getKeyByLED(led)
+  int16_t key;              // LED can be derived via key_to_LED_map[key]
+  int16_t next[6];          // each ikosidodecaeder has six neighbours
 };
 
 struct ge_struct gel[60];
 
+uint16_t getGELPosByKey(uint16_t key)
+{
+  uint16_t pos;
+  for( pos = 0; pos < 60; pos++ )
+    if ( gel[pos].key == key )
+      return pos;
+  return -1;
+}
+
 /*
   Learn algo:
-    show a ge, let user choose the most right neighbor for each pentagon --> next[5]
-    show a ge, let user choose the most right neighbor for each triangle --> next[2]
+    show a ge, let user choose the most right neighbour for each pentagon --> next[5]
+    show a ge, let user choose the most right neighbour for each triangle --> next[2]
     For the next[5], next[0] will be the shown ge
     later:
       for( i = 0; i < 60; i++)
@@ -750,18 +883,204 @@ struct ge_struct gel[60];
       next[4] = next[5].next[2]
       next[1] = next[0].next[3]
 
-
-
 */
+
+void clearGEL(void)
+{
+  int i, j;
+  int key_to_led_pos = 0;
+
+  Serial.print("clear GEL\n");
+
+  // assumes that getAssignedKeyCount() >= 60 !!!!!
+  
+  for( i = 0; i < 60; i++)
+  {
+    while(key_to_LED_map[key_to_led_pos] < 0 )
+      key_to_led_pos++;
+    gel[i].led = key_to_LED_map[key_to_led_pos];
+    gel[i].key = key_to_led_pos;
+    for( j = 0; j < 6; j++)
+        gel[i].next[j] = -1;
+    key_to_led_pos++;
+  }
+
+}
+
+int learnPentagon()
+{
+  static int gel_pos = 0; 
+  static int state = 0; 
+  static uint32_t t = 0;
+  static uint32_t wait_time_ms = 4000;
+  int i;
+  
+  switch(state)
+  {
+    case 0:
+      for( i = 0; i < 60; i++ )
+      {
+        if ( gel[i].next[5] < 0 )
+        {
+          Serial.print("pentagon learn mode: continue with learning\n");
+          break;
+        }
+      }
+      
+      if ( i >= 60 )
+      {
+        state = 9;     // pentagon finished
+        break;
+      }
+    
+      // find a suitable edge, which could be checked
+      while( gel[gel_pos].next[5] >= 0 )
+      {
+        gel_pos++;
+        if ( gel_pos >= 60 )
+          gel_pos = 0;
+      }
+      
+      t = millis();
+      setRGB(gel[gel_pos].led, 200, 200, 0);  
+      Serial.print("press pentagon next right edge (led number=");
+      Serial.print(gel[gel_pos].led, DEC);
+      Serial.print(")\n");
+      state = 1;
+      break;
+    case 1:  // wait for keypress or timeout
+      if ( current_key >= 0 )
+      {
+        setRGB(gel[gel_pos].led, 100, 100, 200);
+        gel[gel_pos].next[5] = getGELPosByKey(current_key);
+        if ( gel_pos == gel[gel_pos].next[5] )
+        {
+          gel[gel_pos].next[5] = -1;            // illegal self assignment
+          Serial.print("pentagon edge self asignment ignored\n");
+        }
+        else
+        {
+          Serial.print("pentagon edge ");
+          Serial.print(gel_pos, DEC);
+          Serial.print("(led= ");
+          Serial.print(gel[gel_pos].led, DEC);
+          Serial.print(") has next right edge ");
+          Serial.print(gel[gel_pos].next[5], DEC);
+          Serial.print("\n");          
+          gel_pos = gel[gel_pos].next[5];
+        }
+        state = 2;
+      }
+      else if ( (millis() - t) > wait_time_ms )
+      {
+        setRGB(gel[gel_pos].led, 0, 0, 0);  
+        gel_pos++;
+        clearRGBMatrix();
+        state = 0; 
+      }
+      break;
+     case 2:    // wait for key release
+        if ( current_key == -1 )
+        {
+          //setRGB(gel[gel_pos].led, 0, 0, 0);  
+          clearRGBMatrix();
+          state = 0;         
+        }
+        break;
+      
+    case 9: // finished
+      Serial.print("pentagon learn mode done (9)\n");
+      state = 0;
+      return 1;
+  }
+  return 0;
+}
 
 
 /*================================================*/
+/* Learn mode: Key to LED Mapping */
+
+int learnKeyLEDMap()
+{
+  static uint8_t led_number = 0;
+  static uint32_t t = 0;
+  static int state = 0; 
+  static uint32_t wait_time_ms = 4000;
+
+  
+  if ( getAssignedKeyCount() >= 60 )
+  {
+    Serial.print("Key LED learing done\n");
+    return 1; // learn mode done
+  }
+    
+  switch(state)
+  {
+    case 0: // find the next open key
+      /* find the next unassigned led */
+      while( getKeyByLED(led_number) >= 0 )
+        led_number++;
+      if ( led_number >= 64 )
+        led_number = 0;
+        
+      t = millis();
+      setRGB(led_number, 200, 200, 0);  
+      Serial.print("press sensor for led number=");
+      Serial.print(led_number, DEC);
+      Serial.print("\n");
+      state = 1;
+      break;
+    case 1:  // wait for keypress or timeout
+      if ( current_key >= 0 )
+      {
+        key_to_LED_map[current_key] = led_number;
+        Serial.print("New assignment: Key ");
+        Serial.print(current_key, DEC);
+        Serial.print(" assigned to LED ");
+        Serial.print(led_number, DEC);
+        Serial.print("\n");
+        fixKeyToLEDMap();
+        setRGB(led_number, 100, 100, 200);
+        showKeyMapStatus();
+        state = 2;
+      }
+      else if ( (millis() - t) > wait_time_ms )
+      {
+        setRGB(led_number, 0, 0, 0);  
+        led_number++;
+        clearRGBMatrix();
+        state = 0; 
+      }
+      break;
+     case 2:    // wait for key release
+        if ( current_key == -1 )
+        {
+          setRGB(led_number, 0, 0, 0);  
+          led_number++;
+          state = 0;         
+        }
+        break;
+  }
+  return 0;
+}
+
+
+
+//uint16_t port_touch_capacitance[16];
+
+
+#define MASTER_MODE_NONE 0
+#define MASTER_MODE_LEARN_KEY_LED_MAP 1
+#define MASTER_MODE_LEARN_PENTAGON 2
+
+uint8_t master_mode = MASTER_MODE_NONE;
 
 // the setup function runs once when you press reset or power the board
 void setup(void) {
-
+  //Serial.begin(9600);
+  Serial.begin(115200);
   
-  Serial.begin(9600);
+  delay(1200);
   /*
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
@@ -862,160 +1181,48 @@ void setup(void) {
   pinMode(PE14, OUTPUT);
   pinMode(PE15, OUTPUT);
 
+  fixKeyToLEDMap();
 
-  key_to_LED_map[0] = 36;
-  key_to_LED_map[1] = 51;
-  key_to_LED_map[2] = 21;
-  key_to_LED_map[3] = 25;
-  key_to_LED_map[4] = 7;
-  key_to_LED_map[5] = 20;
-  key_to_LED_map[6] = 17;
-  key_to_LED_map[7] = 44;
-  key_to_LED_map[8] = 59;
-  key_to_LED_map[9] = 8;
-  key_to_LED_map[10] = 56;
-  key_to_LED_map[11] = 58;
-  key_to_LED_map[12] = 4;
-  key_to_LED_map[13] = 48;
-  key_to_LED_map[14] = 7;
-  key_to_LED_map[15] = 49;
-  key_to_LED_map[16] = 19;
-  key_to_LED_map[17] = -1;
-  key_to_LED_map[18] = 63;
-  key_to_LED_map[19] = 55;
-  key_to_LED_map[20] = -1;
-  key_to_LED_map[21] = 22;
-  key_to_LED_map[22] = 41;
-  key_to_LED_map[23] = 28;
-  key_to_LED_map[24] = 5;
-  key_to_LED_map[25] = 46;
-key_to_LED_map[26] = 11;
-key_to_LED_map[27] = 57;
-key_to_LED_map[28] = 31;
-key_to_LED_map[29] = 12;
-key_to_LED_map[30] = 27;
-key_to_LED_map[31] = 14;
-key_to_LED_map[32] = 24;
-key_to_LED_map[33] = 38;
-key_to_LED_map[34] = 2;
-key_to_LED_map[35] = 62;
-key_to_LED_map[36] = 32;
-key_to_LED_map[37] = 37;
-key_to_LED_map[38] = 40;
-key_to_LED_map[39] = 42;
-key_to_LED_map[40] = 15;
-key_to_LED_map[41] = 26;
-key_to_LED_map[42] = 9;
-key_to_LED_map[43] = -1;
-key_to_LED_map[44] = 16;
-key_to_LED_map[45] = -1;
-key_to_LED_map[46] = 45;
-key_to_LED_map[47] = 3;
-key_to_LED_map[48] = 30;
-key_to_LED_map[49] = 0;
-key_to_LED_map[50] = 53;
-key_to_LED_map[51] = -1;
-key_to_LED_map[52] = -1;
-key_to_LED_map[53] = 52;
-key_to_LED_map[54] = 39;
-key_to_LED_map[55] = 10;
-key_to_LED_map[56] = 47;
-key_to_LED_map[57] = 6;
-key_to_LED_map[58] = 50;
-key_to_LED_map[59] = 1;
-key_to_LED_map[60] = 43;
-key_to_LED_map[61] = 23;
-key_to_LED_map[62] = 18;
-key_to_LED_map[63] = 13;
-key_to_LED_map[64] = 29;
-key_to_LED_map[65] = 54;
-key_to_LED_map[66] = 60;
+  Serial.println("Setup done");
 
-
-  Serial.println("setup done");
-}
-
-
-int learn_key_led_map()
-{
-  static uint8_t led_number = 0;
-  static uint32_t t = 0;
-  static int state = 0; 
-  static uint32_t wait_time_ms = 4000;
-
-  /* find the next unassigned led */
-  while( get_key_by_led(led_number) >= 0 )
-    led_number++;
-  
-  if ( led_number >= 64 )
-    return 1; // learn mode done
-  switch(state)
+  if (  getAssignedKeyCount() < 60 )
   {
-    case 0:
-      t = millis();
-      setRGB(led_number, 200, 200, 0);  
-      Serial.print("led_number=");
-      Serial.println(led_number, DEC);
-      state = 1;
-      break;
-    case 1:  // wait for keypress or timeout
-      if ( current_key >= 0 )
-      {
-        key_to_LED_map[current_key] = led_number;
-        state = 2;
-        setRGB(led_number, 100, 100, 200);
-      }
-      else if ( (millis() - t) > wait_time_ms )
-      {
-        setRGB(led_number, 0, 0, 0);  
-        led_number++;
-        state = 0; 
-      }
-      break;
-     case 2:
-        if ( current_key == -1 )
-        {
-          setRGB(led_number, 0, 0, 0);  
-          led_number++;
-          state = 0;         
-        }
-        break;
+    master_mode = MASTER_MODE_LEARN_KEY_LED_MAP;
+    Serial.print("Key LED mapping mode started\n");
   }
-  return 0;
+  else
+  {
+    clearGEL();
+    Serial.print("Pentagon learn mode started\n");
+    master_mode = MASTER_MODE_LEARN_PENTAGON;
+  }
 }
 
-
-
-//uint16_t port_touch_capacitance[16];
-
-
-#define MASTER_MODE_NONE 0
-#define MASTER_MODE_LEARN_KEY_LED_MAP 1
-
-uint8_t master_mode = MASTER_MODE_LEARN_KEY_LED_MAP;
-//uint8_t master_mode = MASTER_MODE_NONE;
 
 // the loop function runs over and over again forever
-void loop() {
+void loop() 
+{
   updateTouchKeys();
   sendLEDMatrix();
 
   switch(master_mode)
   {
     case MASTER_MODE_LEARN_KEY_LED_MAP:
-      if ( learn_key_led_map() != 0 )
+      if ( learnKeyLEDMap() != 0 )
         master_mode = MASTER_MODE_NONE;
       break;
+    case MASTER_MODE_LEARN_PENTAGON:
+      if ( learnPentagon() != 0 )
+        master_mode = MASTER_MODE_NONE;
+      break;    
   }
   
-  digitalWrite(PA1, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delay(50);                       // wait 
-  digitalWrite(PA1, LOW);    // turn the LED off by making the voltage LOW
-  delay(50);                       // wait 
-  
-  //getTouchCapForPortPins(GPIOB, (1<<9), port_touch_capacitance);
-  //Serial.print(" port_touch_capacitance[9]=");
-  //Serial.print(port_touch_capacitance[9], DEC);
-
-  //Serial.println("");
+  if ( (millis() & 0x01ff) < 0xff )
+  {
+    digitalWrite(PA1, HIGH);   // turn the LED on (HIGH is the voltage level)
+  }
+  else
+  {
+    digitalWrite(PA1, LOW);    // turn the LED off by making the voltage LOW
+  }
 }
