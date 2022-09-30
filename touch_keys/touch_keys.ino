@@ -502,10 +502,11 @@ int getKeyByLED(int led)
 /*
   removes duplicate enties from the key to LED mapping table
 */
-void fixKeyToLEDMap(void)
+int fixKeyToLEDMap(void)
 {
   int16_t i, j, cnt;
   int16_t led = -1;
+  int removed_led_cnt = 0;
   for( i = 0; i < TOUCH_KEY_CNT; i++ )
   {
     if ( key_to_LED_map[i] >= 0 )
@@ -530,6 +531,7 @@ void fixKeyToLEDMap(void)
           if ( key_to_LED_map[j] == led )
           {
             key_to_LED_map[j] = -1;
+            removed_led_cnt++;
             cnt++;
           }
         }
@@ -541,6 +543,7 @@ void fixKeyToLEDMap(void)
       }
     }
   }
+  return removed_led_cnt;
 }
 
 /*
@@ -857,6 +860,7 @@ struct ge_struct
 {
   int16_t led;               // key can be derived with getKeyByLED(led)
   int16_t key;              // LED can be derived via key_to_LED_map[key]
+  int16_t pentagon;     // pentagon number, starts with 0
   int16_t next[6];          // each ikosidodecaeder has six neighbours
 };
 
@@ -869,6 +873,120 @@ uint16_t getGELPosByKey(uint16_t key)
     if ( gel[pos].key == key )
       return pos;
   return -1;
+}
+
+void printGEL(void)
+{
+  uint16_t pos, i;
+  Serial.print("= {");
+  for( pos = 0; pos < 60; pos++ )
+  {
+    if ( pos != 0 )
+      Serial.print(",");
+    Serial.print("{");
+    Serial.print(gel[pos].led, DEC);
+    Serial.print(",");
+    Serial.print(gel[pos].key, DEC);
+    Serial.print(",");
+    Serial.print(gel[pos].pentagon, DEC);
+    Serial.print(",{");
+    for( i = 0; i < 6; i++ )
+    {
+      if ( i != 0)
+        Serial.print(",");
+      Serial.print(gel[pos].next[i], DEC);      
+    }
+    Serial.print("}");
+    Serial.print("}");
+  }
+}
+
+void invalidatePentagon(uint16_t pentagon)
+{
+  uint16_t pos;
+  for( pos = 0; pos < 60; pos++ )
+  {
+    if ( gel[pos].pentagon == pentagon )
+    {
+      gel[pos].pentagon = -1;
+      gel[pos].next[5] = -1;
+    }
+  }
+}
+
+/*
+  Calculate the "pentagon" value in ge struct.
+  This will also validate, whether all pentagons are correct
+  If an illegal pentagon is detected, then the pentagon is deleted and needs to be relearned
+*/
+int calculatePentagonNumbers(void)
+{
+  uint16_t pos, i, ipos, pentagon;
+  for( pos = 0; pos < 60; pos++ )
+  {
+    gel[pos].pentagon = -1;  
+  }
+  pos = 0;
+  for(pentagon = 0; pentagon <12; pentagon++)
+  {
+    /* search for an unassigned pentagon */
+    for( pos = 0; pos < 60; pos++ )
+    {
+      if ( gel[pos].pentagon == -1 )
+        break;
+    }
+    if ( pos >= 60 )
+      return 1; /* all done */
+
+    /* assign the pentagon number */
+    Serial.print("Pentagon ");
+    Serial.print(pentagon, DEC);
+    Serial.print(": ");
+    i = 0;
+    ipos = pos;
+    for(;;)
+    {
+      Serial.print(ipos, DEC);
+      Serial.print(" ");
+      gel[ipos].pentagon = pentagon;
+      ipos = gel[ipos].next[5];
+      if ( ipos < 0 )
+      {
+        Serial.print("incomplete\n");
+        invalidatePentagon(pentagon);
+        return 0;
+      }
+      i++;
+      if ( ipos == pos )
+        break;        // "i" should be 5 
+      if ( gel[ipos].pentagon < 0 )
+      {
+        gel[ipos].pentagon = pentagon;
+      }
+      else
+      {
+        Serial.print("other pentagon ");
+        Serial.print(gel[ipos].pentagon, DEC);
+        Serial.print("hit\n");
+        invalidatePentagon(gel[ipos].pentagon);
+        invalidatePentagon(pentagon);
+        return 0;
+      }
+    }
+    
+    if ( i != 5 )
+    {
+      invalidatePentagon(pentagon);
+      Serial.print("invalid count\n");
+      return 0;
+    }
+
+    Serial.print("\n");
+
+    /* pentagon is valid, continue */
+  } /* for pentagon */
+  Serial.print("Pentagon calculation internal error\n");
+  return 1;
 }
 
 /*
@@ -900,6 +1018,7 @@ void clearGEL(void)
       key_to_led_pos++;
     gel[i].led = key_to_LED_map[key_to_led_pos];
     gel[i].key = key_to_led_pos;
+    gel[i].pentagon = -1;
     for( j = 0; j < 6; j++)
         gel[i].next[j] = -1;
     key_to_led_pos++;
@@ -912,8 +1031,9 @@ int learnPentagon()
   static int gel_pos = 0; 
   static int state = 0; 
   static uint32_t t = 0;
-  static uint32_t wait_time_ms = 4000;
+  static uint32_t wait_time_ms = 7000;
   int i;
+  int missing_ge_cnt = 0;
   
   switch(state)
   {
@@ -921,9 +1041,15 @@ int learnPentagon()
       for( i = 0; i < 60; i++ )
       {
         if ( gel[i].next[5] < 0 )
+          missing_ge_cnt++;
+      }
+      
+      for( i = 0; i < 60; i++ )
+      {
+        if ( gel[i].next[5] < 0 )
         {
           Serial.print("pentagon learn mode: continue with learning\n");
-          break;
+          break;        /* break out of the for loop */
         }
       }
       
@@ -932,6 +1058,10 @@ int learnPentagon()
         state = 9;     // pentagon finished
         break;
       }
+      
+      Serial.print("Missing edge count=");
+      Serial.print(missing_ge_cnt, DEC);
+      Serial.print("\n");
     
       // find a suitable edge, which could be checked
       while( gel[gel_pos].next[5] >= 0 )
@@ -968,6 +1098,7 @@ int learnPentagon()
           Serial.print(gel[gel_pos].next[5], DEC);
           Serial.print("\n");          
           gel_pos = gel[gel_pos].next[5];
+          printGEL();
         }
         state = 2;
       }
@@ -989,6 +1120,13 @@ int learnPentagon()
         break;
       
     case 9: // finished
+      if ( calculatePentagonNumbers() == 0 )
+      {
+        Serial.print("pentagon learn mode with errors, redo required (9)\n");
+        state = 0;
+        break;
+      }
+    
       Serial.print("pentagon learn mode done (9)\n");
       state = 0;
       return 1;
