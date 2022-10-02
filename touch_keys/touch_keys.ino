@@ -32,6 +32,8 @@
 
 */
 
+#include <stdarg.h>
+
 /*================================================*/
 /*
 
@@ -209,6 +211,29 @@ void ws2812_spi_out(uint8_t *data, int cnt)
 
 /*================================================*/
 
+void p(const char *fmt, ...)
+{
+  static char s[1024];
+  va_list va;
+  va_start(va, fmt);
+  vsnprintf(s, 1024, fmt, va);
+  va_end(va);
+  Serial.print(s);
+}
+
+void pn(const char *fmt, ...)
+{
+  static char s[1024];
+  va_list va;
+  va_start(va, fmt);
+  vsnprintf(s, 1024, fmt, va);
+  va_end(va);
+  Serial.print(s);
+  Serial.print("\n");
+}
+
+/*================================================*/
+
 #define LED_CNT 64
 uint8_t LEDMatrixData[LED_CNT*3];
 
@@ -307,6 +332,7 @@ void setHSV(uint8_t pos, uint8_t h, uint8_t s, uint8_t v)
 struct touch_status_struct {
   GPIO_TypeDef *gpio; /* e.g. GPIOB */
   uint16_t pin;   /* pin number within that GPIO block (0..15) */
+  uint16_t arduino_pin;         /* arduino pin number */
   uint16_t min_cap;   /* automatically calculated, typical values seem to be 18..19 */
   uint16_t threshold_cap;   /* if the cap value is below this value, then an untouched touch pad is assumed, use 0 for default */
   uint16_t status;
@@ -329,94 +355,96 @@ struct touch_measure_struct {
 /*
   the touch status list contains a list of all possible sensor inputs
   some of the ports can be commented if they are used for otherwise
+  
+  The index into touch_status_list is refered as "key" in this software.
 */
 struct touch_status_struct touch_status_list[] =  {
-  //{ GPIOA, 0, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  //{ GPIOA, 1, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},  
-  { GPIOA, 2, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOA, 3, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOA, 4, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOA, 5, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOA, 6, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  //{ GPIOA, 7, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},  // MOSI for LED matrix
-  { GPIOA, 8, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  //{ GPIOA, 9, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},    // for USART, not on header
-  //{ GPIOA, 10, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},   // for USART, not on header
+  //{ GPIOA, 0, PA0, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  //{ GPIOA, 1, PA1, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},  
+  { GPIOA, 2, PA2, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOA, 3, PA3, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOA, 4, PA4, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOA, 5, PA5, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOA, 6, PA6, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  //{ GPIOA, 7, PA7, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},  // MOSI for LED matrix
+  { GPIOA, 8, PA8, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  //{ GPIOA, 9, PA9, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},    // for USART, not on header
+  //{ GPIOA, 10, PA10, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},   // for USART, not on header
   
-  //{ GPIOA, 11, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},   // for USART
-  //{ GPIOA, 12, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},   // for USART
-  //{ GPIOA, 13, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},  // SWDIO
-  //{ GPIOA, 14, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},   // SWDCLK
-  { GPIOA, 15, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  //{ GPIOA, 11, PA11, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},   // for USART
+  //{ GPIOA, 12, PA12, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},   // for USART
+  //{ GPIOA, 13, PA13, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},  // SWDIO
+  //{ GPIOA, 14, PA14, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},   // SWDCLK
+  { GPIOA, 15, PA15, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
 
-  { GPIOB, 0, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOB, 1, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  //{ GPIOB, 2, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOB, 3, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  //{ GPIOB, 4, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 0, PB0, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 1, PB1, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  //{ GPIOB, 2, PB2, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 3, PB3, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  //{ GPIOB, 4, PB4, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
   
-  { GPIOB, 5, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOB, 6, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOB, 7, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOB, 8, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOB, 9, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOB, 10, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOB, 11, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOB, 12, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOB, 13, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOB, 14, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOB, 15, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 5, PB5, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 6, PB6, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 7, PB7, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 8, PB8, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 9, PB9, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 10, PB10, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 11, PB11, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 12, PB12, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 13, PB13, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 14, PB14, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOB, 15, PB15, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
   
-  { GPIOC, 0, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOC, 1, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOC, 2, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOC, 3, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOC, 4, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOC, 5, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOC, 6, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOC, 7, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOC, 8, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOC, 9, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOC, 10, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOC, 11, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOC, 12, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOC, 13, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0}, 
-  //{ GPIOC, 14, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},  // not available on Header
-  //{ GPIOC, 15, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0}, // not available on Header
+  { GPIOC, 0, PC0, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 1, PC1, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 2, PC2, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 3, PC3, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 4, PC4, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 5, PC5, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 6, PC6, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 7, PC7, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 8, PC8, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 9, PC9, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 10, PC10, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 11, PC11, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 12, PC12, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOC, 13, PC13, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0}, 
+  //{ GPIOC, 14, PC14, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},  // not available on Header
+  //{ GPIOC, 15, PC15, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0}, // not available on Header
 
-  { GPIOD, 0, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOD, 1, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOD, 2, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOD, 3, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOD, 4, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOD, 5, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOD, 6, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOD, 7, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOD, 8, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOD, 9, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOD, 10, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOD, 11, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOD, 12, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOD, 13, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOD, 14, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOD, 15, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 0, PD0 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 1, PD1 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 2, PD2 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 3, PD3 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 4, PD4 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 5, PD5 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 6, PD6 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 7, PD7 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 8, PD8 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 9, PD9 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 10, PD11 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 11, PD11 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 12, PD12 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 13, PD13 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 14, PD14 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 15, PD15 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
 
-  { GPIOE, 0, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOE, 1, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOE, 2, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOE, 3, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOE, 4, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOE, 5, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOE, 6, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOE, 7, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOE, 8, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOE, 9, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOE, 10, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOE, 11, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOE, 12, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOE, 13, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOE, 14, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOE, 15, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 0, PE0, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 1, PE1, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 2, PE2, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 3, PE3, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 4, PE4, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 5, PE5, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 6, PE6, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 7, PE7, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 8, PE8, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 9, PE9, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 10, PE10, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 11, PE11, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 12, PE12, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 13, PE13, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 14, PE14, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOE, 15, PE15, 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
   
 };
 
@@ -469,6 +497,32 @@ void fillTouchMeasure(struct touch_measure_struct *m, GPIO_TypeDef *gpio)
       m->touch_status_index[touch_status_list[i].pin] = i;
     }
   }
+}
+
+const char *getGPIONameByKey(int key)
+{
+  static char name[16];
+  strcpy(name, "?");
+  if ( touch_status_list[key].gpio == GPIOA ) strcpy(name, "A");
+  if ( touch_status_list[key].gpio == GPIOB ) strcpy(name, "B");
+  if ( touch_status_list[key].gpio == GPIOC ) strcpy(name, "C");
+  if ( touch_status_list[key].gpio == GPIOD ) strcpy(name, "D");
+  if ( touch_status_list[key].gpio == GPIOE ) strcpy(name, "E");
+  sprintf(name+1, "%d", touch_status_list[key].pin);
+  return name;
+}
+
+const char *getKeyInfoString(int key)
+{
+  static char s[32];    /* max 23 */
+  strcpy(s, "[");
+  strcat(s, "key=");
+  sprintf(s+strlen(s), "%d", key);
+  strcat(s, " io=");
+  strcat(s, getGPIONameByKey(key));
+  strcat(s, " led=");
+  sprintf(s+strlen(s), "%d]", key_to_LED_map[key]);
+  return s;
 }
 
 void buildTouchMeasureList(void)
@@ -575,6 +629,8 @@ void showKeyMapStatus(void)
     {
       Serial.print("/*");
       Serial.print(i, DEC);
+      Serial.print(", ");
+      Serial.print(getGPIONameByKey(i));
       Serial.print(":*/");
     }
     Serial.print(key_to_LED_map[i], DEC);
@@ -596,6 +652,7 @@ void showKeyMapStatus(void)
   {
     if ( key_to_LED_map[i] < 0 )
     {
+      /*
       if ( touch_status_list[i].gpio == GPIOA ) Serial.print("A");
       else if ( touch_status_list[i].gpio == GPIOB ) Serial.print("B");
       else if ( touch_status_list[i].gpio == GPIOC ) Serial.print("C");
@@ -603,6 +660,8 @@ void showKeyMapStatus(void)
       else if ( touch_status_list[i].gpio == GPIOE ) Serial.print("E");
       else Serial.print("?");
       Serial.print(touch_status_list[i].pin, DEC);
+      */
+      Serial.print(getGPIONameByKey(i));
       Serial.print(" ");
     }
   }  
@@ -630,7 +689,9 @@ void signalKeyPressEvent(int key, uint16_t cap)
   Serial.print(cap, DEC);
   Serial.print(" Key ");
   Serial.print(key, DEC);
-  Serial.print(" pressed\n");  
+  Serial.print(" (");
+  Serial.print(getGPIONameByKey(key));
+  Serial.print(") pressed\n");  
 
   setRGB(key_to_LED_map[key], 200, 0, 100);  
   current_key = key;
@@ -648,7 +709,9 @@ void signalKeyReleasedEvent(int key)
 {
   Serial.print("Key ");
   Serial.print(key, DEC);
-  Serial.print(" released\n");  
+  Serial.print(" (");
+  Serial.print(getGPIONameByKey(key));
+  Serial.print(") released\n");  
 
   //showKeyMapStatus();
   
@@ -861,10 +924,74 @@ struct ge_struct
   int16_t led;               // key can be derived with getKeyByLED(led)
   int16_t key;              // LED can be derived via key_to_LED_map[key]
   int16_t pentagon;     // pentagon number, starts with 0
+  int16_t triangle;        // triangle number, starts with 0
   int16_t next[6];          // each ikosidodecaeder has six neighbours
 };
 
-struct ge_struct gel[60];
+struct ge_struct gel[60] = {
+{36,0 /* A2 */,0,-1,{-1,-1,-1,-1,-1,27}}
+,{51,1 /* A3 */,0,-1,{-1,-1,-1,-1,-1,0}}
+,{21,2 /* A4 */,1,-1,{-1,-1,-1,-1,-1,26}}
+,{25,3 /* A5 */,1,-1,{-1,-1,-1,-1,-1,2}}
+,{20,5 /* A8 */,2,-1,{-1,-1,-1,-1,-1,44}}
+,{17,6 /* A15 */,3,-1,{-1,-1,-1,-1,-1,28}}
+,{44,7 /* B0 */,0,-1,{-1,-1,-1,-1,-1,51}}
+,{59,8 /* B1 */,4,-1,{-1,-1,-1,-1,-1,59}}
+,{8,9 /* B3 */,5,-1,{-1,-1,-1,-1,-1,54}}
+,{56,10 /* B5 */,6,-1,{-1,-1,-1,-1,-1,13}}
+,{58,11 /* B6 */,6,-1,{-1,-1,-1,-1,-1,12}}
+,{4,12 /* B7 */,6,-1,{-1,-1,-1,-1,-1,9}}
+,{48,13 /* B8 */,6,-1,{-1,-1,-1,-1,-1,11}}
+,{7,14 /* B9 */,6,-1,{-1,-1,-1,-1,-1,10}}
+,{49,15 /* B10 */,4,-1,{-1,-1,-1,-1,-1,17}}
+,{19,16 /* B11 */,7,-1,{-1,-1,-1,-1,-1,31}}
+,{63,18 /* B13 */,8,-1,{-1,-1,-1,-1,-1,22}}
+,{55,19 /* B14 */,4,-1,{-1,-1,-1,-1,-1,45}}
+,{22,21 /* C0 */,9,-1,{-1,-1,-1,-1,-1,29}}
+,{41,22 /* C1 */,10,-1,{-1,-1,-1,-1,-1,36}}
+,{28,23 /* C2 */,2,-1,{-1,-1,-1,-1,-1,4}}
+,{5,24 /* C3 */,3,-1,{-1,-1,-1,-1,-1,5}}
+,{46,25 /* C4 */,8,-1,{-1,-1,-1,-1,-1,57}}
+,{11,26 /* C5 */,3,-1,{-1,-1,-1,-1,-1,21}}
+,{57,27 /* C6 */,5,-1,{-1,-1,-1,-1,-1,8}}
+,{31,28 /* C7 */,2,-1,{-1,-1,-1,-1,-1,41}}
+,{12,29 /* C8 */,1,-1,{-1,-1,-1,-1,-1,38}}
+,{27,30 /* C9 */,0,-1,{-1,-1,-1,-1,-1,6}}
+,{14,31 /* C10 */,3,-1,{-1,-1,-1,-1,-1,56}}
+,{24,32 /* C11 */,9,-1,{-1,-1,-1,-1,-1,47}}
+,{38,33 /* C12 */,1,-1,{-1,-1,-1,-1,-1,3}}
+,{2,34 /* C13 */,7,-1,{-1,-1,-1,-1,-1,42}}
+,{62,35 /* D0 */,8,-1,{-1,-1,-1,-1,-1,16}}
+,{32,36 /* D1 */,11,-1,{-1,-1,-1,-1,-1,55}}
+,{37,37 /* D2 */,10,-1,{-1,-1,-1,-1,-1,53}}
+,{40,38 /* D3 */,5,-1,{-1,-1,-1,-1,-1,58}}
+,{42,39 /* D4 */,10,-1,{-1,-1,-1,-1,-1,34}}
+,{15,40 /* D5 */,11,-1,{-1,-1,-1,-1,-1,33}}
+,{26,41 /* D6 */,1,-1,{-1,-1,-1,-1,-1,30}}
+,{9,42 /* D7 */,9,-1,{-1,-1,-1,-1,-1,48}}
+,{16,44 /* D9 */,11,-1,{-1,-1,-1,-1,-1,43}}
+,{45,46 /* D11 */,2,-1,{-1,-1,-1,-1,-1,20}}
+,{3,47 /* D12 */,7,-1,{-1,-1,-1,-1,-1,50}}
+,{30,48 /* D13 */,11,-1,{-1,-1,-1,-1,-1,37}}
+,{0,49 /* D14 */,2,-1,{-1,-1,-1,-1,-1,25}}
+,{53,50 /* D15 */,4,-1,{-1,-1,-1,-1,-1,7}}
+,{52,53 /* E2 */,10,-1,{-1,-1,-1,-1,-1,19}}
+,{39,54 /* E3 */,9,-1,{-1,-1,-1,-1,-1,39}}
+,{10,55 /* E4 */,9,-1,{-1,-1,-1,-1,-1,18}}
+,{47,56 /* E5 */,8,-1,{-1,-1,-1,-1,-1,32}}
+,{6,57 /* E6 */,7,-1,{-1,-1,-1,-1,-1,52}}
+,{50,58 /* E7 */,0,-1,{-1,-1,-1,-1,-1,1}}
+,{1,59 /* E8 */,7,-1,{-1,-1,-1,-1,-1,15}}
+,{43,60 /* E9 */,10,-1,{-1,-1,-1,-1,-1,46}}
+,{23,61 /* E10 */,5,-1,{-1,-1,-1,-1,-1,35}}
+,{18,62 /* E11 */,11,-1,{-1,-1,-1,-1,-1,40}}
+,{13,63 /* E12 */,3,-1,{-1,-1,-1,-1,-1,23}}
+,{29,64 /* E13 */,8,-1,{-1,-1,-1,-1,-1,49}}
+,{54,65 /* E14 */,5,-1,{-1,-1,-1,-1,-1,24}}
+,{60,66 /* E15 */,4,-1,{-1,-1,-1,-1,-1,14}}
+};
+
+
 
 uint16_t getGELPosByKey(uint16_t key)
 {
@@ -878,27 +1005,21 @@ uint16_t getGELPosByKey(uint16_t key)
 void printGEL(void)
 {
   uint16_t pos, i;
-  Serial.print("= {");
+  pn("struct ge_struct gel[60] = {");
   for( pos = 0; pos < 60; pos++ )
   {
     if ( pos != 0 )
-      Serial.print(",");
-    Serial.print("{");
-    Serial.print(gel[pos].led, DEC);
-    Serial.print(",");
-    Serial.print(gel[pos].key, DEC);
-    Serial.print(",");
-    Serial.print(gel[pos].pentagon, DEC);
-    Serial.print(",{");
+      p(",");
+    p("{%d,%d /* %s */,%d,%d,{", gel[pos].led, gel[pos].key, getGPIONameByKey(gel[pos].key), gel[pos].pentagon, gel[pos].triangle);
     for( i = 0; i < 6; i++ )
     {
       if ( i != 0)
-        Serial.print(",");
-      Serial.print(gel[pos].next[i], DEC);      
+        p(",");
+      p("%d", gel[pos].next[i]);
     }
-    Serial.print("}");
-    Serial.print("}");
+    pn("}}");
   }
+  pn("};");
 }
 
 void invalidatePentagon(uint16_t pentagon)
@@ -913,6 +1034,7 @@ void invalidatePentagon(uint16_t pentagon)
     }
   }
 }
+
 
 /*
   Calculate the "pentagon" value in ge struct.
@@ -939,9 +1061,7 @@ int calculatePentagonNumbers(void)
       return 1; /* all done */
 
     /* assign the pentagon number */
-    Serial.print("Pentagon ");
-    Serial.print(pentagon, DEC);
-    Serial.print(": ");
+    p("Pentagon %d: ", pentagon);
     i = 0;
     ipos = pos;
     for(;;)
@@ -965,9 +1085,7 @@ int calculatePentagonNumbers(void)
       }
       else
       {
-        Serial.print("other pentagon ");
-        Serial.print(gel[ipos].pentagon, DEC);
-        Serial.print("hit\n");
+        pn("other pentagon %d hit", gel[ipos].pentagon);
         invalidatePentagon(gel[ipos].pentagon);
         invalidatePentagon(pentagon);
         return 0;
@@ -977,15 +1095,15 @@ int calculatePentagonNumbers(void)
     if ( i != 5 )
     {
       invalidatePentagon(pentagon);
-      Serial.print("invalid count\n");
+      pn("invalid count %d", i);
       return 0;
     }
 
-    Serial.print("\n");
-
+    pn("");
     /* pentagon is valid, continue */
   } /* for pentagon */
-  Serial.print("Pentagon calculation internal error\n");
+  
+  /* this is reached if the outer loop is done */
   return 1;
 }
 
@@ -1019,6 +1137,7 @@ void clearGEL(void)
     gel[i].led = key_to_LED_map[key_to_led_pos];
     gel[i].key = key_to_led_pos;
     gel[i].pentagon = -1;
+    gel[i].triangle = -1;
     for( j = 0; j < 6; j++)
         gel[i].next[j] = -1;
     key_to_led_pos++;
@@ -1026,12 +1145,171 @@ void clearGEL(void)
 
 }
 
+/*
+  check for a next loop with element at gel_pos with the given index (ge.next[index]).
+  index is 5 for pentagon
+  return value:
+    -1 if no loop exists
+    >= 0 for any loop count (5 for pentagon)
+*/
+int checkNextLoop(int index, int gel_pos)
+{
+  int cnt = 1;
+  int pos = gel_pos;
+  for(;;)
+  {
+    if ( gel[pos].next[index] < 0 )
+      return -1;
+    if ( gel[pos].next[index] == gel_pos )
+      return cnt;
+    if ( cnt > 60 )
+      return cnt;
+    pos = gel[pos].next[index];
+    cnt++;
+  }
+}
+
+/*
+  check whether pentagon information in GEL is correct.
+  Used during startup to decide whether to go to pentagon learn mode  
+  this will just use next[5] and the pentagon number.
+*/
+int isGELPentagonCorrect(void)
+{
+  int pos;
+  for( pos = 0; pos < 60; pos++ )
+  {
+    if ( gel[pos].pentagon < 0 )
+      return 0;         /* pentagon number missing: not correct */
+    if ( checkNextLoop(5, pos) != 5 )
+      return 0;         /* loop is not a pentagon: not correct */
+  }
+  return 1;     /* pentagon information is correct in GEL */
+}
+
+
+
+/*
+  clears an existing next loop  for the given next index, starting with gel_pos.
+  the corresponding 
+    int checkNextLoop(int index, int gel_pos)
+  must return a positive value with the same arguments
+*/
+void clearNextLoop(int index, int gel_pos)
+{
+  int cnt = 0;
+  int pos = gel_pos;
+  if ( checkNextLoop(index, gel_pos) < 0 )
+  {
+    //pn("clearNextLoop: No loop found for pos=%d", gel_pos);
+    return;
+  }
+  
+  for(;;)
+  {
+    if ( gel[pos].next[index] < 0 )
+    {
+      gel[pos].pentagon=-1;
+      break;
+    }
+    if ( gel[pos].next[index] == gel_pos )
+    {
+      gel[pos].next[index] = -1;
+      gel[pos].pentagon = -1;
+      break;
+    }
+    if ( cnt > 60 )
+      break ;
+    pos = gel[pos].next[index];
+    gel[pos].next[index] = -1;
+    cnt++;
+  }
+}
+
+/*
+  mark a loop as pentagon loop
+    checkNextLoop(5, int gel_pos) must return 5
+*/
+void markPentagonNextLoop(int gel_pos, uint16_t pentagon_number)
+{
+  int cnt = 0;
+  int pos = gel_pos;
+  
+  /* check whether this is a pentago */
+  
+  if ( checkNextLoop(5, gel_pos) != 5 )
+    return;
+    
+  /* mark this pentagon with the given (unique) number */
+    
+  for(;;)
+  {
+    if ( gel[pos].next[5] < 0 )
+      break; /* shouln't happen */
+    if ( gel[pos].next[5] == gel_pos )
+    {
+      gel[pos].pentagon = pentagon_number;
+      break;
+    }
+    if ( cnt > 60 )
+      break;            /* shouldn't happen */       
+    gel[pos].pentagon = pentagon_number;
+    pos = gel[pos].next[5];
+    cnt++;
+  }
+  
+  /* clear any illegal next references to any member of that loop */
+  
+  for( pos = 0; pos < 60; pos++)
+  {
+    /* if the edge has a next and doesn't belong to the current pentagon */
+    if ( gel[pos].next[5] > 0 && gel[pos].pentagon != pentagon_number )
+    {
+      /* however if that edge points to an edge of the current pentagon, then this is an error */
+      if ( gel[gel[pos].next[5]].pentagon == pentagon_number )
+      {
+        gel[pos].next[5] = -1;
+      }
+    }
+  }
+}
+
+
+uint16_t pentagon_mark_number = 0;
+void checkAndMarkPentagons(void)
+{
+  int cnt;
+  int pos;
+  for( pos = 0; pos < 60; pos++)
+  {
+    if ( gel[pos].pentagon < 0 )
+    {
+      cnt  = checkNextLoop(5, pos);
+      if ( cnt >= 0 )
+      {
+        if ( cnt == 5 )
+        {
+          pn("pentagon loop found at %d: Marked with %d", pos, pentagon_mark_number);
+          markPentagonNextLoop(pos, pentagon_mark_number);
+          pentagon_mark_number++;
+        }
+        else
+        {
+          pn("Pentagon illegal loop (cnt=%d) found at pos=%d: Will be cleared", cnt, pos);
+          clearNextLoop(5, pos);
+        }
+      } /* cnt >= 0 */
+    } /* pentagon < 0 */
+  } /* for */
+}
+
+
 int learnPentagon()
 {
   static int gel_pos = 0; 
   static int state = 0; 
   static uint32_t t = 0;
-  static uint32_t wait_time_ms = 7000;
+  static uint32_t wait_time_ms = 8000;
   int i;
   int missing_ge_cnt = 0;
   
@@ -1048,7 +1326,7 @@ int learnPentagon()
       {
         if ( gel[i].next[5] < 0 )
         {
-          Serial.print("pentagon learn mode: continue with learning\n");
+          pn("pentagon learn mode: select clockwise next pentagon edge (missing edge cnt=%d)", missing_ge_cnt);
           break;        /* break out of the for loop */
         }
       }
@@ -1059,10 +1337,6 @@ int learnPentagon()
         break;
       }
       
-      Serial.print("Missing edge count=");
-      Serial.print(missing_ge_cnt, DEC);
-      Serial.print("\n");
-    
       // find a suitable edge, which could be checked
       while( gel[gel_pos].next[5] >= 0 )
       {
@@ -1073,32 +1347,36 @@ int learnPentagon()
       
       t = millis();
       setRGB(gel[gel_pos].led, 200, 200, 0);  
-      Serial.print("press pentagon next right edge (led number=");
-      Serial.print(gel[gel_pos].led, DEC);
-      Serial.print(")\n");
+      // Serial.print("press pentagon next right edge (led number=");
+      // Serial.print(gel[gel_pos].led, DEC);
+      // Serial.print(")\n");
+      
+      pn("press pentagon next right edge (led number=%d)", gel[gel_pos].led);
       state = 1;
       break;
     case 1:  // wait for keypress or timeout
       if ( current_key >= 0 )
       {
+        int16_t next_gel_pos;
         setRGB(gel[gel_pos].led, 100, 100, 200);
-        gel[gel_pos].next[5] = getGELPosByKey(current_key);
-        if ( gel_pos == gel[gel_pos].next[5] )
+        next_gel_pos = getGELPosByKey(current_key);;
+        if ( gel_pos == next_gel_pos )
         {
-          gel[gel_pos].next[5] = -1;            // illegal self assignment
-          Serial.print("pentagon edge self asignment ignored\n");
+          // illegal self assignment
+          pn("pentagon edge self asignment ignored %s", getKeyInfoString(current_key));
+        }
+        else if ( gel[next_gel_pos].pentagon > 0 )
+        {
+          pn("pentagon edge towards existing valid pentagon ignored %s", getKeyInfoString(current_key));
         }
         else
         {
-          Serial.print("pentagon edge ");
-          Serial.print(gel_pos, DEC);
-          Serial.print("(led= ");
-          Serial.print(gel[gel_pos].led, DEC);
-          Serial.print(") has next right edge ");
-          Serial.print(gel[gel_pos].next[5], DEC);
-          Serial.print("\n");          
-          gel_pos = gel[gel_pos].next[5];
-          printGEL();
+          pn("pentagon edge %d %s 'next' changed to %d", gel_pos, getKeyInfoString(gel[gel_pos].key), next_gel_pos);
+          gel[gel_pos].next[5] =  next_gel_pos;
+          gel_pos = next_gel_pos;
+
+          //printGEL();
+          checkAndMarkPentagons();
         }
         state = 2;
       }
@@ -1122,12 +1400,13 @@ int learnPentagon()
     case 9: // finished
       if ( calculatePentagonNumbers() == 0 )
       {
-        Serial.print("pentagon learn mode with errors, redo required (9)\n");
+        printGEL();
+        pn("pentagon learn mode with errors, redo required (9)");
         state = 0;
         break;
       }
-    
-      Serial.print("pentagon learn mode done (9)\n");
+      printGEL();
+      pn("pentagon learn mode done (9)");
       state = 0;
       return 1;
   }
@@ -1207,6 +1486,50 @@ int learnKeyLEDMap()
 //uint16_t port_touch_capacitance[16];
 
 
+/*================================================*/
+/* hardware self test */
+
+int selfTest(void)
+{
+  int i, j;
+  int is_error = 0;
+  char keyname[16];
+  for( i = 0; i < TOUCH_KEY_CNT; i++ )
+  {
+    strcpy(keyname, getGPIONameByKey(i));
+
+    pinMode(touch_status_list[i].arduino_pin, OUTPUT);
+    
+    digitalWrite(touch_status_list[i].arduino_pin, 0);
+    for( j = 0; j < TOUCH_KEY_CNT; j++ )
+    {   
+      if ( j != i ) pinMode(touch_status_list[i].arduino_pin, INPUT_PULLUP);
+    }
+    for( j = 0; j < TOUCH_KEY_CNT; j++ )
+    {   
+      if ( j != i ) 
+        if ( digitalRead(touch_status_list[i].arduino_pin) == 0 )
+          pn("short circuit between key %d (%s) and %d (%s) found", i, keyname, j, getGPIONameByKey(j)), is_error=1;
+    }
+    
+    digitalWrite(touch_status_list[i].arduino_pin, 1);
+    for( j = 0; j < TOUCH_KEY_CNT; j++ )
+    {   
+      if ( j != i ) pinMode(touch_status_list[i].arduino_pin, INPUT_PULLDOWN);
+    }
+    for( j = 0; j < TOUCH_KEY_CNT; j++ )
+    {   
+      if ( j != i ) 
+        if ( digitalRead(touch_status_list[i].arduino_pin) != 0 )
+          pn("short circuit between key %d (%s) and %d (%s) found", i, keyname, j, getGPIONameByKey(j)), is_error=1;
+    }
+  }
+  return is_error;
+}
+
+/*================================================*/
+/* setup() and loop() */
+
 #define MASTER_MODE_NONE 0
 #define MASTER_MODE_LEARN_KEY_LED_MAP 1
 #define MASTER_MODE_LEARN_PENTAGON 2
@@ -1214,125 +1537,48 @@ int learnKeyLEDMap()
 uint8_t master_mode = MASTER_MODE_NONE;
 
 // the setup function runs once when you press reset or power the board
-void setup(void) {
+
+void setup(void) 
+{
   //Serial.begin(9600);
   Serial.begin(115200);
   
   delay(1200);
-  /*
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
-  */
-
-  Serial.println("buildTouchMeasureList");
+  
+  pn("buildTouchMeasureList");
   buildTouchMeasureList();
   
-  Serial.println("initLEDMatrix");
+  pn("initLEDMatrix");
   initLEDMatrix();
-    
+
+  pn("self test");
+  selfTest();
+
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(PA1, OUTPUT);
-
-  pinMode(PA2, OUTPUT);
-  pinMode(PA3, OUTPUT);
-  pinMode(PA4, OUTPUT);
-  pinMode(PA5, OUTPUT);
-  pinMode(PA6, OUTPUT);
-  
-  // pinMode(PA7, OUTPUT); // MOSI for LED matrix
-  pinMode(PA8, OUTPUT);
-  //pinMode(PA9, OUTPUT); // not on header
-  //pinMode(PA10, OUTPUT); // not on header
-  
-  //pinMode(PA11, OUTPUT); // breaks USART
-  //pinMode(PA12, OUTPUT); // breaks USART
-  //pinMode(PA13, OUTPUT); // not on header
-  //pinMode(PA14, OUTPUT); // not on header
-  pinMode(PA15, OUTPUT);
-
-  pinMode(PB0, OUTPUT);
-  pinMode(PB1, OUTPUT);
-  //pinMode(PB2, OUTPUT);
-  pinMode(PB3, OUTPUT);
-  //pinMode(PB4, OUTPUT);
-  pinMode(PB5, OUTPUT);
-  pinMode(PB6, OUTPUT);
-  pinMode(PB7, OUTPUT);
-  pinMode(PB8, OUTPUT);
-  pinMode(PB9, OUTPUT);
-  pinMode(PB10, OUTPUT);
-  pinMode(PB11, OUTPUT);
-  pinMode(PB12, OUTPUT);
-  pinMode(PB13, OUTPUT);
-  pinMode(PB14, OUTPUT);
-  pinMode(PB15, OUTPUT);
-
-  pinMode(PC0, OUTPUT);
-  pinMode(PC1, OUTPUT);
-  pinMode(PC2, OUTPUT);
-  pinMode(PC3, OUTPUT);
-  pinMode(PC4, OUTPUT);
-  pinMode(PC5, OUTPUT);
-  pinMode(PC6, OUTPUT);
-  pinMode(PC7, OUTPUT);
-  pinMode(PC8, OUTPUT);
-  pinMode(PC9, OUTPUT);
-  pinMode(PC10, OUTPUT);
-  pinMode(PC11, OUTPUT);
-  pinMode(PC12, OUTPUT);
-  pinMode(PC13, OUTPUT);
-  //pinMode(PC14, OUTPUT);
-  //pinMode(PC15, OUTPUT);
-
-  pinMode(PD0, OUTPUT);
-  pinMode(PD1, OUTPUT);
-  pinMode(PD2, OUTPUT);
-  pinMode(PD3, OUTPUT);
-  pinMode(PD4, OUTPUT);
-  pinMode(PD5, OUTPUT);
-  pinMode(PD6, OUTPUT);
-  pinMode(PD7, OUTPUT);
-  pinMode(PD8, OUTPUT);
-  pinMode(PD9, OUTPUT);
-  pinMode(PD10, OUTPUT);
-  pinMode(PD11, OUTPUT);
-  pinMode(PD12, OUTPUT);
-  pinMode(PD13, OUTPUT);
-  pinMode(PD14, OUTPUT);
-  pinMode(PD15, OUTPUT);
-
-  pinMode(PE0, OUTPUT);
-  pinMode(PE1, OUTPUT);
-  pinMode(PE2, OUTPUT);
-  pinMode(PE3, OUTPUT);
-  pinMode(PE4, OUTPUT);
-  pinMode(PE5, OUTPUT);
-  pinMode(PE6, OUTPUT);
-  pinMode(PE7, OUTPUT);
-  pinMode(PE8, OUTPUT);
-  pinMode(PE9, OUTPUT);
-  pinMode(PE10, OUTPUT);
-  pinMode(PE11, OUTPUT);
-  pinMode(PE12, OUTPUT);
-  pinMode(PE13, OUTPUT);
-  pinMode(PE14, OUTPUT);
-  pinMode(PE15, OUTPUT);
+  for( int i = 0; i < TOUCH_KEY_CNT; i++ )
+  {
+    pinMode(touch_status_list[i].arduino_pin, OUTPUT);
+  }
 
   fixKeyToLEDMap();
 
-  Serial.println("Setup done");
+  pn("Setup done");
 
   if (  getAssignedKeyCount() < 60 )
   {
     master_mode = MASTER_MODE_LEARN_KEY_LED_MAP;
-    Serial.print("Key LED mapping mode started\n");
+    pn("Key LED mapping mode started");
+  }
+  else if ( isGELPentagonCorrect() == 0 )
+  {
+    clearGEL();
+    pn("Pentagon learn mode started");
+    master_mode = MASTER_MODE_LEARN_PENTAGON;
   }
   else
   {
-    clearGEL();
-    Serial.print("Pentagon learn mode started\n");
-    master_mode = MASTER_MODE_LEARN_PENTAGON;
+    pn("Default mode started");
   }
 }
 
