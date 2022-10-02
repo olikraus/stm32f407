@@ -916,7 +916,9 @@ void updateTouchKeys(void)
 }
 
 /*================================================*/
-/* Learn mode: Graph */
+/* Graph definitions */
+
+
 
 /* graph element struct (actually it is the edge of the ikosidodecaeder */
 struct ge_struct
@@ -925,70 +927,79 @@ struct ge_struct
   int16_t key;              // LED can be derived via key_to_LED_map[key]
   int16_t pentagon;     // pentagon number, starts with 0
   int16_t triangle;        // triangle number, starts with 0
-  int16_t next[6];          // each ikosidodecaeder has six neighbours
+  int16_t next[6];          // each ikosidodecaeder has six neighbour edges
+  /*
+    if edge is assumed to be part of a pentagon then
+      next[0] is previous clock wise edge of the pentagon
+      next[5] is next clock wise edge of the pentagon
+    if edge is assumed to be part of a triangle then
+      next[3] is previous clock wise edge of the triangle
+      next[2] is next clock wise edge of the triangle
+      
+  */
 };
 
 struct ge_struct gel[60] = {
-{36,0 /* A2 */,0,-1,{-1,-1,-1,-1,-1,27}}
-,{51,1 /* A3 */,0,-1,{-1,-1,-1,-1,-1,0}}
-,{21,2 /* A4 */,1,-1,{-1,-1,-1,-1,-1,26}}
-,{25,3 /* A5 */,1,-1,{-1,-1,-1,-1,-1,2}}
-,{20,5 /* A8 */,2,-1,{-1,-1,-1,-1,-1,44}}
-,{17,6 /* A15 */,3,-1,{-1,-1,-1,-1,-1,28}}
-,{44,7 /* B0 */,0,-1,{-1,-1,-1,-1,-1,51}}
-,{59,8 /* B1 */,4,-1,{-1,-1,-1,-1,-1,59}}
-,{8,9 /* B3 */,5,-1,{-1,-1,-1,-1,-1,54}}
-,{56,10 /* B5 */,6,-1,{-1,-1,-1,-1,-1,13}}
-,{58,11 /* B6 */,6,-1,{-1,-1,-1,-1,-1,12}}
-,{4,12 /* B7 */,6,-1,{-1,-1,-1,-1,-1,9}}
-,{48,13 /* B8 */,6,-1,{-1,-1,-1,-1,-1,11}}
-,{7,14 /* B9 */,6,-1,{-1,-1,-1,-1,-1,10}}
-,{49,15 /* B10 */,4,-1,{-1,-1,-1,-1,-1,17}}
-,{19,16 /* B11 */,7,-1,{-1,-1,-1,-1,-1,31}}
-,{63,18 /* B13 */,8,-1,{-1,-1,-1,-1,-1,22}}
-,{55,19 /* B14 */,4,-1,{-1,-1,-1,-1,-1,45}}
-,{22,21 /* C0 */,9,-1,{-1,-1,-1,-1,-1,29}}
-,{41,22 /* C1 */,10,-1,{-1,-1,-1,-1,-1,36}}
-,{28,23 /* C2 */,2,-1,{-1,-1,-1,-1,-1,4}}
-,{5,24 /* C3 */,3,-1,{-1,-1,-1,-1,-1,5}}
-,{46,25 /* C4 */,8,-1,{-1,-1,-1,-1,-1,57}}
-,{11,26 /* C5 */,3,-1,{-1,-1,-1,-1,-1,21}}
-,{57,27 /* C6 */,5,-1,{-1,-1,-1,-1,-1,8}}
-,{31,28 /* C7 */,2,-1,{-1,-1,-1,-1,-1,41}}
-,{12,29 /* C8 */,1,-1,{-1,-1,-1,-1,-1,38}}
-,{27,30 /* C9 */,0,-1,{-1,-1,-1,-1,-1,6}}
-,{14,31 /* C10 */,3,-1,{-1,-1,-1,-1,-1,56}}
-,{24,32 /* C11 */,9,-1,{-1,-1,-1,-1,-1,47}}
-,{38,33 /* C12 */,1,-1,{-1,-1,-1,-1,-1,3}}
-,{2,34 /* C13 */,7,-1,{-1,-1,-1,-1,-1,42}}
-,{62,35 /* D0 */,8,-1,{-1,-1,-1,-1,-1,16}}
-,{32,36 /* D1 */,11,-1,{-1,-1,-1,-1,-1,55}}
-,{37,37 /* D2 */,10,-1,{-1,-1,-1,-1,-1,53}}
-,{40,38 /* D3 */,5,-1,{-1,-1,-1,-1,-1,58}}
-,{42,39 /* D4 */,10,-1,{-1,-1,-1,-1,-1,34}}
-,{15,40 /* D5 */,11,-1,{-1,-1,-1,-1,-1,33}}
-,{26,41 /* D6 */,1,-1,{-1,-1,-1,-1,-1,30}}
-,{9,42 /* D7 */,9,-1,{-1,-1,-1,-1,-1,48}}
-,{16,44 /* D9 */,11,-1,{-1,-1,-1,-1,-1,43}}
-,{45,46 /* D11 */,2,-1,{-1,-1,-1,-1,-1,20}}
-,{3,47 /* D12 */,7,-1,{-1,-1,-1,-1,-1,50}}
-,{30,48 /* D13 */,11,-1,{-1,-1,-1,-1,-1,37}}
-,{0,49 /* D14 */,2,-1,{-1,-1,-1,-1,-1,25}}
-,{53,50 /* D15 */,4,-1,{-1,-1,-1,-1,-1,7}}
-,{52,53 /* E2 */,10,-1,{-1,-1,-1,-1,-1,19}}
-,{39,54 /* E3 */,9,-1,{-1,-1,-1,-1,-1,39}}
-,{10,55 /* E4 */,9,-1,{-1,-1,-1,-1,-1,18}}
-,{47,56 /* E5 */,8,-1,{-1,-1,-1,-1,-1,32}}
-,{6,57 /* E6 */,7,-1,{-1,-1,-1,-1,-1,52}}
-,{50,58 /* E7 */,0,-1,{-1,-1,-1,-1,-1,1}}
-,{1,59 /* E8 */,7,-1,{-1,-1,-1,-1,-1,15}}
-,{43,60 /* E9 */,10,-1,{-1,-1,-1,-1,-1,46}}
-,{23,61 /* E10 */,5,-1,{-1,-1,-1,-1,-1,35}}
-,{18,62 /* E11 */,11,-1,{-1,-1,-1,-1,-1,40}}
-,{13,63 /* E12 */,3,-1,{-1,-1,-1,-1,-1,23}}
-,{29,64 /* E13 */,8,-1,{-1,-1,-1,-1,-1,49}}
-,{54,65 /* E14 */,5,-1,{-1,-1,-1,-1,-1,24}}
-,{60,66 /* E15 */,4,-1,{-1,-1,-1,-1,-1,14}}
+{36,0 /* A2 */,0,0,{-1,-1,53,-1,-1,27}}
+,{51,1 /* A3 */,0,1,{-1,-1,7,-1,-1,0}}
+,{21,2 /* A4 */,1,2,{-1,-1,18,-1,-1,26}}
+,{25,3 /* A5 */,1,3,{-1,-1,34,-1,-1,2}}
+,{20,5 /* A8 */,2,4,{-1,-1,26,-1,-1,44}}
+,{17,6 /* A15 */,3,5,{-1,-1,15,-1,-1,28}}
+,{44,7 /* B0 */,0,6,{-1,-1,41,-1,-1,51}}
+,{59,8 /* B1 */,4,1,{-1,-1,46,-1,-1,59}}
+,{8,9 /* B3 */,5,7,{-1,-1,9,-1,-1,54}}
+,{56,10 /* B5 */,6,7,{-1,-1,50,-1,-1,13}}
+,{58,11 /* B6 */,6,8,{-1,-1,14,-1,-1,12}}
+,{4,12 /* B7 */,6,9,{-1,-1,37,-1,-1,9}}
+,{48,13 /* B8 */,6,10,{-1,-1,49,-1,-1,11}}
+,{7,14 /* B9 */,6,11,{-1,-1,24,-1,-1,10}}
+,{49,15 /* B10 */,4,8,{-1,-1,32,-1,-1,17}}
+,{19,16 /* B11 */,7,5,{-1,-1,43,-1,-1,31}}
+,{63,18 /* B13 */,8,12,{-1,-1,59,-1,-1,22}}
+,{55,19 /* B14 */,4,11,{-1,-1,13,-1,-1,45}}
+,{22,21 /* C0 */,9,2,{-1,-1,23,-1,-1,29}}
+,{41,22 /* C1 */,10,13,{-1,-1,45,-1,-1,36}}
+,{28,23 /* C2 */,2,14,{-1,-1,27,-1,-1,4}}
+,{5,24 /* C3 */,3,15,{-1,-1,48,-1,-1,5}}
+,{46,25 /* C4 */,8,6,{-1,-1,6,-1,-1,57}}
+,{11,26 /* C5 */,3,2,{-1,-1,2,-1,-1,21}}
+,{57,27 /* C6 */,5,11,{-1,-1,17,-1,-1,8}}
+,{31,28 /* C7 */,2,16,{-1,-1,55,-1,-1,41}}
+,{12,29 /* C8 */,1,4,{-1,-1,56,-1,-1,38}}
+,{27,30 /* C9 */,0,14,{-1,-1,38,-1,-1,6}}
+,{14,31 /* C10 */,3,17,{-1,-1,40,-1,-1,56}}
+,{24,32 /* C11 */,9,3,{-1,-1,3,-1,-1,47}}
+,{38,33 /* C12 */,1,0,{-1,-1,0,-1,-1,3}}
+,{2,34 /* C13 */,7,15,{-1,-1,21,-1,-1,42}}
+,{62,35 /* D0 */,8,8,{-1,-1,10,-1,-1,16}}
+,{32,36 /* D1 */,11,10,{-1,-1,12,-1,-1,55}}
+,{37,37 /* D2 */,10,3,{-1,-1,29,-1,-1,53}}
+,{40,38 /* D3 */,5,18,{-1,-1,47,-1,-1,58}}
+,{42,39 /* D4 */,10,18,{-1,-1,35,-1,-1,34}}
+,{15,40 /* D5 */,11,9,{-1,-1,52,-1,-1,33}}
+,{26,41 /* D6 */,1,14,{-1,-1,20,-1,-1,30}}
+,{9,42 /* D7 */,9,19,{-1,-1,54,-1,-1,48}}
+,{16,44 /* D9 */,11,17,{-1,-1,44,-1,-1,43}}
+,{45,46 /* D11 */,2,6,{-1,-1,22,-1,-1,20}}
+,{3,47 /* D12 */,7,19,{-1,-1,39,-1,-1,50}}
+,{30,48 /* D13 */,11,5,{-1,-1,5,-1,-1,37}}
+,{0,49 /* D14 */,2,17,{-1,-1,28,-1,-1,25}}
+,{53,50 /* D15 */,4,13,{-1,-1,58,-1,-1,7}}
+,{52,53 /* E2 */,10,1,{-1,-1,1,-1,-1,19}}
+,{39,54 /* E3 */,9,18,{-1,-1,36,-1,-1,39}}
+,{10,55 /* E4 */,9,15,{-1,-1,31,-1,-1,18}}
+,{47,56 /* E5 */,8,10,{-1,-1,33,-1,-1,32}}
+,{6,57 /* E6 */,7,7,{-1,-1,8,-1,-1,52}}
+,{50,58 /* E7 */,0,12,{-1,-1,16,-1,-1,1}}
+,{1,59 /* E8 */,7,9,{-1,-1,11,-1,-1,15}}
+,{43,60 /* E9 */,10,0,{-1,-1,30,-1,-1,46}}
+,{23,61 /* E10 */,5,19,{-1,-1,42,-1,-1,35}}
+,{18,62 /* E11 */,11,16,{-1,-1,57,-1,-1,40}}
+,{13,63 /* E12 */,3,4,{-1,-1,4,-1,-1,23}}
+,{29,64 /* E13 */,8,16,{-1,-1,25,-1,-1,49}}
+,{54,65 /* E14 */,5,13,{-1,-1,19,-1,-1,24}}
+,{60,66 /* E15 */,4,12,{-1,-1,51,-1,-1,14}}
 };
 
 
@@ -1022,104 +1033,7 @@ void printGEL(void)
   pn("};");
 }
 
-void invalidatePentagon(uint16_t pentagon)
-{
-  uint16_t pos;
-  for( pos = 0; pos < 60; pos++ )
-  {
-    if ( gel[pos].pentagon == pentagon )
-    {
-      gel[pos].pentagon = -1;
-      gel[pos].next[5] = -1;
-    }
-  }
-}
 
-
-/*
-  Calculate the "pentagon" value in ge struct.
-  This will also validate, whether all pentagons are correct
-  If an illegal pentagon is detected, then the pentagon is deleted and needs to be relearned
-*/
-int calculatePentagonNumbers(void)
-{
-  uint16_t pos, i, ipos, pentagon;
-  for( pos = 0; pos < 60; pos++ )
-  {
-    gel[pos].pentagon = -1;  
-  }
-  pos = 0;
-  for(pentagon = 0; pentagon <12; pentagon++)
-  {
-    /* search for an unassigned pentagon */
-    for( pos = 0; pos < 60; pos++ )
-    {
-      if ( gel[pos].pentagon == -1 )
-        break;
-    }
-    if ( pos >= 60 )
-      return 1; /* all done */
-
-    /* assign the pentagon number */
-    p("Pentagon %d: ", pentagon);
-    i = 0;
-    ipos = pos;
-    for(;;)
-    {
-      Serial.print(ipos, DEC);
-      Serial.print(" ");
-      gel[ipos].pentagon = pentagon;
-      ipos = gel[ipos].next[5];
-      if ( ipos < 0 )
-      {
-        Serial.print("incomplete\n");
-        invalidatePentagon(pentagon);
-        return 0;
-      }
-      i++;
-      if ( ipos == pos )
-        break;        // "i" should be 5 
-      if ( gel[ipos].pentagon < 0 )
-      {
-        gel[ipos].pentagon = pentagon;
-      }
-      else
-      {
-        pn("other pentagon %d hit", gel[ipos].pentagon);
-        invalidatePentagon(gel[ipos].pentagon);
-        invalidatePentagon(pentagon);
-        return 0;
-      }
-    }
-    
-    if ( i != 5 )
-    {
-      invalidatePentagon(pentagon);
-      pn("invalid count %d", i);
-      return 0;
-    }
-
-    pn("");
-    /* pentagon is valid, continue */
-  } /* for pentagon */
-  
-  /* this is reached if the outer loop is done */
-  return 1;
-}
-
-/*
-  Learn algo:
-    show a ge, let user choose the most right neighbour for each pentagon --> next[5]
-    show a ge, let user choose the most right neighbour for each triangle --> next[2]
-    For the next[5], next[0] will be the shown ge
-    later:
-      for( i = 0; i < 60; i++)
-        gel[gel[i].next[5]].next[0] = i;
-
-      next[4] = next[5].next[2]
-      next[1] = next[0].next[3]
-
-*/
 
 void clearGEL(void)
 {
@@ -1169,24 +1083,47 @@ int checkNextLoop(int index, int gel_pos)
   }
 }
 
-/*
-  check whether pentagon information in GEL is correct.
-  Used during startup to decide whether to go to pentagon learn mode  
-  this will just use next[5] and the pentagon number.
-*/
-int isGELPentagonCorrect(void)
-{
-  int pos;
-  for( pos = 0; pos < 60; pos++ )
-  {
-    if ( gel[pos].pentagon < 0 )
-      return 0;         /* pentagon number missing: not correct */
-    if ( checkNextLoop(5, pos) != 5 )
-      return 0;         /* loop is not a pentagon: not correct */
-  }
-  return 1;     /* pentagon information is correct in GEL */
-}
+/*================================================*/
+/* Common preocedures for Pentagon and Triangle Learn Mode */
 
+/*
+  Learn algo:
+    show a ge, let user choose the most right neighbour for each pentagon --> next[5]
+    show a ge, let user choose the most right neighbour for each triangle --> next[2]
+    For the next[5], next[0] will be the shown ge
+    later:
+      for( i = 0; i < 60; i++)
+        gel[gel[i].next[5]].next[0] = i;
+
+      next[4] = next[5].next[2]
+      next[1] = next[0].next[3]
+*/
+
+/*
+  calculate next 0, 1, 3 & 4
+  this function must be called only if isGELPentagonCorrect() and isGELTriangleCorrect() return true
+*/
+void calculateOtherNextGELValues(void)
+{
+  int i, j;
+  /* get previous pentagon edge */
+  for( i = 0; i < 60; i++)
+    if ( gel[i].next[5] >= 0 )
+      gel[gel[i].next[5]].next[0] = i;
+      
+  /* get previous triangle edge */
+  for( i = 0; i < 60; i++)
+    if ( gel[i].next[2] >= 0 )
+      gel[gel[i].next[2]].next[3] = i;
+
+  for( i = 0; i < 60; i++)
+    if ( gel[i].next[5] >= 0 )
+      gel[i].next[4] = gel[gel[i].next[5]].next[2];
+      
+  for( i = 0; i < 60; i++)
+    if ( gel[i].next[0] >= 0 )
+      gel[i].next[1] = gel[gel[i].next[0]].next[3];  
+}
 
 
 /*
@@ -1226,6 +1163,113 @@ void clearNextLoop(int index, int gel_pos)
   }
 }
 
+/*================================================*/
+/* Learn mode: Pentagons */
+
+void invalidatePentagon(uint16_t pentagon)
+{
+  uint16_t pos;
+  for( pos = 0; pos < 60; pos++ )
+  {
+    if ( gel[pos].pentagon == pentagon )
+    {
+      gel[pos].pentagon = -1;
+      gel[pos].next[5] = -1;
+    }
+  }
+}
+
+
+/*
+  Calculate the "pentagon" value in ge struct (although it has been calculated before, it is recalculated here)
+  This will also validate, whether all pentagons are correct
+  If an illegal pentagon is detected, then the pentagon is deleted and needs to be relearned
+  This is called after the learning process.
+*/
+int calculatePentagonNumbers(void)
+{
+  uint16_t pos, i, ipos, pentagon;
+  for( pos = 0; pos < 60; pos++ )
+  {
+    gel[pos].pentagon = -1;  
+  }
+  pos = 0;
+  for(pentagon = 0; pentagon <12; pentagon++)
+  {
+    /* search for an unassigned pentagon */
+    for( pos = 0; pos < 60; pos++ )
+    {
+      if ( gel[pos].pentagon == -1 )
+        break;
+    }
+    if ( pos >= 60 )
+      return 1; /* all done */
+
+    /* assign the pentagon number */
+    p("Pentagon %d: ", pentagon);
+    i = 0;
+    ipos = pos;
+    for(;;)
+    {
+      p("%d ", ipos);
+      gel[ipos].pentagon = pentagon;
+      ipos = gel[ipos].next[5];
+      if ( ipos < 0 )
+      {
+        pn("incomplete");
+        invalidatePentagon(pentagon);
+        return 0;
+      }
+      i++;
+      if ( ipos == pos )
+        break;        // "i" should be 5 
+      if ( gel[ipos].pentagon < 0 )
+      {
+        gel[ipos].pentagon = pentagon;
+      }
+      else
+      {
+        pn("other pentagon %d hit", gel[ipos].pentagon);
+        invalidatePentagon(gel[ipos].pentagon);
+        invalidatePentagon(pentagon);
+        return 0;
+      }
+    }
+    
+    if ( i != 5 )
+    {
+      invalidatePentagon(pentagon);
+      pn("invalid count %d", i);
+      return 0;
+    }
+
+    pn("");
+    /* pentagon is valid, continue */
+  } /* for pentagon */
+  
+  /* this is reached if the outer loop is done */
+  return 1;
+}
+
+/*
+  check whether pentagon information in GEL is correct.
+  Used during startup to decide whether to go to pentagon learn mode  
+  this will just use next[5] and the pentagon number.
+*/
+int isGELPentagonCorrect(void)
+{
+  int pos;
+  for( pos = 0; pos < 60; pos++ )
+  {
+    if ( gel[pos].pentagon < 0 )
+      return 0;         /* pentagon number missing: not correct */
+    if ( checkNextLoop(5, pos) != 5 )
+      return 0;         /* loop is not a pentagon: not correct */
+  }
+  return 1;     /* pentagon information is correct in GEL */
+}
+
+
 /*
   mark a loop as pentagon loop
     checkNextLoop(5, int gel_pos) must return 5
@@ -1235,7 +1279,7 @@ void markPentagonNextLoop(int gel_pos, uint16_t pentagon_number)
   int cnt = 0;
   int pos = gel_pos;
   
-  /* check whether this is a pentago */
+  /* check whether this is a pentagon */
   
   if ( checkNextLoop(5, gel_pos) != 5 )
     return;
@@ -1303,7 +1347,6 @@ void checkAndMarkPentagons(void)
   } /* for */
 }
 
-
 int learnPentagon()
 {
   static int gel_pos = 0; 
@@ -1347,11 +1390,7 @@ int learnPentagon()
       
       t = millis();
       setRGB(gel[gel_pos].led, 200, 200, 0);  
-      // Serial.print("press pentagon next right edge (led number=");
-      // Serial.print(gel[gel_pos].led, DEC);
-      // Serial.print(")\n");
-      
-      pn("press pentagon next right edge (led number=%d)", gel[gel_pos].led);
+      pn("press pentagon next right (clockwise) edge %s", getKeyInfoString(gel[gel_pos].key));
       state = 1;
       break;
     case 1:  // wait for keypress or timeout
@@ -1375,7 +1414,6 @@ int learnPentagon()
           gel[gel_pos].next[5] =  next_gel_pos;
           gel_pos = next_gel_pos;
 
-          //printGEL();
           checkAndMarkPentagons();
         }
         state = 2;
@@ -1407,6 +1445,294 @@ int learnPentagon()
       }
       printGEL();
       pn("pentagon learn mode done (9)");
+      state = 0;
+      return 1;
+  }
+  return 0;
+}
+
+/*================================================*/
+/* Learn mode: Triangles */
+
+void invalidateTriangle(uint16_t triangle)
+{
+  uint16_t pos;
+  for( pos = 0; pos < 60; pos++ )
+  {
+    if ( gel[pos].triangle == triangle )
+    {
+      gel[pos].triangle = -1;
+      gel[pos].next[2] = -1;
+    }
+  }
+}
+
+
+/*
+  Calculate the "triangle" value in ge struct (although it has been calculated before, it is recalculated here)
+  This will also validate, whether all triangles are correct
+  If an illegal triangle is detected, then the triangle is deleted and needs to be relearned
+  This is called after the learning process.
+*/
+int calculateTriangleNumbers(void)
+{
+  uint16_t pos, i, ipos, triangle;
+  for( pos = 0; pos < 60; pos++ )
+  {
+    gel[pos].triangle = -1;  
+  }
+  pos = 0;
+  for(triangle = 0; triangle <20; triangle++)
+  {
+    /* search for an unassigned triangle */
+    for( pos = 0; pos < 60; pos++ )
+    {
+      if ( gel[pos].triangle == -1 )
+        break;
+    }
+    if ( pos >= 60 )
+      return 1; /* all done */
+
+    /* assign the triangle number */
+    p("Triangle %d: ", triangle);
+    i = 0;
+    ipos = pos;
+    for(;;)
+    {
+      p("%d ", ipos);
+      gel[ipos].triangle = triangle;
+      ipos = gel[ipos].next[2];
+      if ( ipos < 0 )
+      {
+        pn("incomplete");
+        invalidateTriangle(triangle);
+        return 0;
+      }
+      i++;
+      if ( ipos == pos )
+        break;        // "i" should be 3 
+      if ( gel[ipos].triangle < 0 )
+      {
+        gel[ipos].triangle = triangle;
+      }
+      else
+      {
+        pn("other triangle %d hit", gel[ipos].triangle);
+        invalidateTriangle(gel[ipos].triangle);
+        invalidateTriangle(triangle);
+        return 0;
+      }
+    }
+    
+    if ( i != 3 )
+    {
+      invalidateTriangle(triangle);
+      pn("invalid count %d", i);
+      return 0;
+    }
+
+    pn("");
+    /* triangle is valid, continue */
+  } /* for triangle */
+  
+  /* this is reached if the outer loop is done */
+  return 1;
+}
+
+
+/*
+  check whether pentagon information in GEL is correct.
+  Used during startup to decide whether to go to pentagon learn mode  
+  this will just use next[5] and the pentagon number.
+*/
+int isGELTriangleCorrect(void)
+{
+  int pos;
+  for( pos = 0; pos < 60; pos++ )
+  {
+    if ( gel[pos].triangle < 0 )
+      return 0;         /* triangle number missing: not correct */
+    if ( checkNextLoop(2, pos) != 3 )
+      return 0;         /* loop is not a triangle: not correct */
+  }
+  return 1;     /* triangle information is correct in GEL */
+}
+
+
+/*
+  mark a loop as triangle loop
+    checkNextLoop(2, int gel_pos) must return 3
+*/
+void markTriangleNextLoop(int gel_pos, uint16_t triangle_number)
+{
+  int cnt = 0;
+  int pos = gel_pos;
+  
+  /* check whether this is a triangle */
+  
+  if ( checkNextLoop(2, gel_pos) != 3 )
+    return;
+    
+  /* mark this triangle with the given (unique) number */
+    
+  for(;;)
+  {
+    if ( gel[pos].next[2] < 0 )
+      break; /* shouln't happen */
+    if ( gel[pos].next[2] == gel_pos )
+    {
+      gel[pos].triangle = triangle_number;
+      break;
+    }
+    if ( cnt > 60 )
+      break;            /* shouldn't happen */       
+    gel[pos].triangle = triangle_number;
+    pos = gel[pos].next[2];
+    cnt++;
+  }
+  
+  /* clear any illegal next references to any member of that loop */
+  
+  for( pos = 0; pos < 60; pos++)
+  {
+    /* if the edge has a next and doesn't belong to the current triangle */
+    if ( gel[pos].next[2] > 0 && gel[pos].triangle != triangle_number )
+    {
+      /* however if that edge points to an edge of the current triangle, then this is an error */
+      if ( gel[gel[pos].next[2]].triangle == triangle_number )
+      {
+        gel[pos].next[2] = -1;
+      }
+    }
+  }
+}
+
+uint16_t triangle_mark_number = 0;
+void checkAndMarkTriangles(void)
+{
+  int cnt;
+  int pos;
+  for( pos = 0; pos < 60; pos++)
+  {
+    if ( gel[pos].triangle < 0 )
+    {
+      cnt  = checkNextLoop(2, pos);
+      if ( cnt >= 0 )
+      {
+        if ( cnt == 3 )
+        {
+          pn("triangle loop found at %d: Marked with %d", pos, triangle_mark_number);
+          markTriangleNextLoop(pos, triangle_mark_number);
+          triangle_mark_number++;
+        }
+        else
+        {
+          pn("Triangle illegal loop (cnt=%d) found at pos=%d: Will be cleared", cnt, pos);
+          clearNextLoop(2, pos);
+        }
+      } /* cnt >= 0 */
+    } /* triangle < 0 */
+  } /* for */
+}
+
+int learnTriangle()
+{
+  static int gel_pos = 0; 
+  static int state = 0; 
+  static uint32_t t = 0;
+  static uint32_t wait_time_ms = 8000;
+  int i;
+  int missing_ge_cnt = 0;
+  
+  switch(state)
+  {
+    case 0:
+      for( i = 0; i < 60; i++ )
+      {
+        if ( gel[i].next[2] < 0 )
+          missing_ge_cnt++;
+      }
+      
+      for( i = 0; i < 60; i++ )
+      {
+        if ( gel[i].next[2] < 0 )
+        {
+          pn("triangle learn mode: select clockwise next triangle edge (missing edge cnt=%d)", missing_ge_cnt);
+          break;        /* break out of the for loop */
+        }
+      }
+      
+      if ( i >= 60 )
+      {
+        state = 9;     // pentagon finished
+        break;
+      }
+      
+      // find a suitable edge, which could be checked
+      while( gel[gel_pos].next[2] >= 0 )
+      {
+        gel_pos++;
+        if ( gel_pos >= 60 )
+          gel_pos = 0;
+      }
+      
+      t = millis();
+      setRGB(gel[gel_pos].led, 200, 200, 0);  
+      pn("press triangle next right (clockwise) edge %s", getKeyInfoString(gel[gel_pos].key));
+      state = 1;
+      break;
+    case 1:  // wait for keypress or timeout
+      if ( current_key >= 0 )
+      {
+        int16_t next_gel_pos;
+        setRGB(gel[gel_pos].led, 100, 100, 200);
+        next_gel_pos = getGELPosByKey(current_key);
+        if ( gel_pos == next_gel_pos )
+        {
+          // illegal self assignment
+          pn("triangle edge self asignment ignored %s", getKeyInfoString(current_key));
+        }
+        else if ( gel[next_gel_pos].triangle > 0 )
+        {
+          pn("triangle edge towards existing valid triangle ignored %s", getKeyInfoString(current_key));
+        }
+        else
+        {
+          pn("triangle edge %d %s 'next' changed to %d", gel_pos, getKeyInfoString(gel[gel_pos].key), next_gel_pos);
+          gel[gel_pos].next[2] =  next_gel_pos;
+          gel_pos = next_gel_pos;
+
+          checkAndMarkTriangles();
+        }
+        state = 2;
+      }
+      else if ( (millis() - t) > wait_time_ms )
+      {
+        setRGB(gel[gel_pos].led, 0, 0, 0);  
+        gel_pos++;
+        clearRGBMatrix();
+        state = 0; 
+      }
+      break;
+     case 2:    // wait for key release
+        if ( current_key == -1 )
+        {
+          //setRGB(gel[gel_pos].led, 0, 0, 0);  
+          clearRGBMatrix();
+          state = 0;         
+        }
+        break;
+      
+    case 9: // finished
+      if ( calculateTriangleNumbers() == 0 )
+      {
+        printGEL();
+        pn("triangle learn mode with errors, redo required (9)");
+        state = 0;
+        break;
+      }
+      printGEL();
+      pn("triangle learn mode done (9)");
       state = 0;
       return 1;
   }
@@ -1483,7 +1809,78 @@ int learnKeyLEDMap()
 
 
 
-//uint16_t port_touch_capacitance[16];
+
+/*================================================*/
+
+int masterModeGELShow(void)
+{
+  static int state = 0;
+
+  switch(state)
+  {
+    case 0:
+      state = 1;
+      clearRGBMatrix();
+      break;
+    case 1:
+      if ( current_key >= 0 )
+      {
+        pn("GEL Show %s", getKeyInfoString(current_key));
+        uint16_t pos;
+        uint16_t i;
+        
+        pos = getGELPosByKey(current_key);
+        for( i = 0; i < 5; i++ )
+        {
+          if ( i == 1 )
+            setRGB(gel[pos].led, 0,30, 30);  
+          else
+            setRGB(gel[pos].led, 0, 0, 30);  
+          pos = gel[pos].next[0];
+        }
+
+        pos = getGELPosByKey(current_key);
+        pos = gel[pos].next[3];
+        for( i = 1; i < 3; i++ )
+        {
+          if ( i == 1 )
+            setRGB(gel[pos].led, 0,30, 30);  
+          else
+            setRGB(gel[pos].led, 0, 0, 30);  
+          pos = gel[pos].next[3];
+        }
+
+        pos = getGELPosByKey(current_key);
+        pos = gel[pos].next[4];
+        for( i = 1; i < 10; i++ )
+        {
+          if ( i == 1 )
+            setRGB(gel[pos].led, 30,30, 0);  
+          else
+            setRGB(gel[pos].led, 30, 0, 0);  
+          /* looping over the outer ring requires alternating use of next[1] and next[4] */
+          if ( (i & 1) != 0 )
+            pos = gel[pos].next[1];
+          else
+            pos = gel[pos].next[4];
+        }
+        
+        //setRGB(gel[gel[pos].next[1]].led, 30, 0, 0);  
+        //setRGB(gel[gel[pos].next[4]].led, 0, 30, 0);  
+
+        state = 2;
+      }
+      break;
+    case 2:
+      if ( current_key < 0 )
+      {
+        clearRGBMatrix();
+        state = 1;
+      }
+      break;
+  }
+  return 0;
+}
 
 
 /*================================================*/
@@ -1533,6 +1930,8 @@ int selfTest(void)
 #define MASTER_MODE_NONE 0
 #define MASTER_MODE_LEARN_KEY_LED_MAP 1
 #define MASTER_MODE_LEARN_PENTAGON 2
+#define MASTER_MODE_LEARN_TRIANGLE 3
+#define MASTER_MODE_GEL_SHOW 4
 
 uint8_t master_mode = MASTER_MODE_NONE;
 
@@ -1576,10 +1975,20 @@ void setup(void)
     pn("Pentagon learn mode started");
     master_mode = MASTER_MODE_LEARN_PENTAGON;
   }
+  else if ( isGELTriangleCorrect() == 0 )
+  {
+    pn("Triangle learn mode started");
+    master_mode = MASTER_MODE_LEARN_TRIANGLE;
+  }
   else
   {
-    pn("Default mode started");
+    pn("GEL show mode started");
+    master_mode = MASTER_MODE_GEL_SHOW;
+    //pn("Default mode started");
   }
+
+  calculateOtherNextGELValues();
+
 }
 
 
@@ -1599,6 +2008,19 @@ void loop()
       if ( learnPentagon() != 0 )
         master_mode = MASTER_MODE_NONE;
       break;    
+    case MASTER_MODE_LEARN_TRIANGLE:
+      if ( learnTriangle() != 0 )
+      {
+        calculateOtherNextGELValues();
+        master_mode = MASTER_MODE_NONE;
+      }
+      break;    
+    case MASTER_MODE_GEL_SHOW:
+      if ( masterModeGELShow() != 0 )
+      {
+        master_mode = MASTER_MODE_NONE;
+      }
+      break;
   }
   
   if ( (millis() & 0x01ff) < 0xff )
