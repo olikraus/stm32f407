@@ -1,6 +1,8 @@
 /*
 
-  touch_keys.ino
+  ikosi_learn.ino
+  
+  tool to train "key_to_LED_map" and "gel" arrays
   
   
   Includes:
@@ -14,7 +16,6 @@
     screen /dev/ttyUSB0  115200 (terminate with "C-a k" or "C-a \")
     minicom -D /dev/ttyUSB0  -b 115200 (terminate with "C-a x", change CR mode: "C-a u", disable HW control flow!)
 
-  --> 9600
 
   Ports:
   A0,   User Button
