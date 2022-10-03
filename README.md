@@ -68,8 +68,8 @@ Arduino Pin Numbers:
  PC11            
  PC12            
  PC13            
- PC14 not on pin header for this board           
- PC15 not on pin header for this board           
+ PC14 Not on pin header for this board           
+ PC15 Not on pin header for this board           
  PD0              
  PD1              
  PD2              
