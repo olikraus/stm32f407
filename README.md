@@ -22,10 +22,8 @@ STM32duino Project (https://github.com/stm32duino/Arduino_Core_STM32):
 
 Arduino Pin Numbers:
 
- PA0 Button K1
- 
- PA1 LED D2
- 
+ PA0 Button K1 
+ PA1 LED D2 
  PA2             
  PA3 
  PA4             
@@ -52,7 +50,7 @@ Arduino Pin Numbers:
  PB9             
  PB10           
  PB11           
- PB12           
+ PB12 Pin seems to be connected to GND           
  PB13           
  PB14           
  PB15           
@@ -70,8 +68,8 @@ Arduino Pin Numbers:
  PC11            
  PC12            
  PC13            
- PC14            
- PC15            
+ PC14 not on pin header for this board           
+ PC15 not on pin header for this board           
  PD0              
  PD1              
  PD2              
