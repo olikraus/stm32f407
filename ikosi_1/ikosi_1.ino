@@ -452,8 +452,6 @@ int16_t key_to_LED_map[TOUCH_KEY_CNT]={
 /*50:*/53,-1,-1,52,39,10,47,6,50,1,
 /*60:*/43,23,18,13,29,54,60};  
 
-volatile int current_key = -1; // contains the current pressed key as global variable, assigned in signalKeyPressEvent() and signalKeyReleasedEvent() procedures.
-
 #define TOUCH_MEASURE_CNT 5 /* GPIOA .. GPIOE */
 struct touch_measure_struct touch_measure_list[TOUCH_MEASURE_CNT];
 
@@ -566,6 +564,9 @@ int16_t getAssignedKeyCount(void)
 
 
 /*================================================*/
+
+volatile int current_key = -1; // contains the current pressed key as global variable, assigned in signalKeyPressEvent() and signalKeyReleasedEvent() procedures.
+
 /*
 
   void signalKeyPressEvent(int key, uint16_t cap)
@@ -575,40 +576,25 @@ int16_t getAssignedKeyCount(void)
 */
 void signalKeyPressEvent(int key, uint16_t cap)
 {
-
-  Serial.print("min cap=");
-  Serial.print(touch_status_list[key].min_cap, DEC);
-  Serial.print(" threshold=");
-  Serial.print(touch_status_list[key].threshold_cap, DEC);
-  Serial.print(" current cap=");
-  Serial.print(cap, DEC);
-  Serial.print(" Key ");
-  Serial.print(key, DEC);
-  Serial.print(" (");
-  Serial.print(getGPIONameByKey(key));
-  Serial.print(") pressed\n");  
-
+  pn("min cap=%d threshold=%d current cap=%d %s pressed", 
+    touch_status_list[key].min_cap,
+    touch_status_list[key].threshold_cap,
+    cap,
+    getKeyInfoString(key));
+    
   setRGB(key_to_LED_map[key], 200, 0, 100);  
   current_key = key;
 }
 
 
 /*
-
   void signalKeyReleasedEvent(int key)
 
   called by updateTouchStatus(), which is called by updateTouchKeys().
-
 */
 void signalKeyReleasedEvent(int key)
-{
-  Serial.print("Key ");
-  Serial.print(key, DEC);
-  Serial.print(" (");
-  Serial.print(getGPIONameByKey(key));
-  Serial.print(") released\n");  
-
-  
+{  
+  pn("%s released", getKeyInfoString(key));
   setRGB(key_to_LED_map[key], 0, 20, 0);  
   current_key = -1;
 }
@@ -812,6 +798,47 @@ void updateTouchKeys(void)
 }
 
 /*================================================*/
+/* hardware self test */
+
+int selfTest(void)
+{
+  int i, j;
+  int is_error = 0;
+  char keyname[16];
+  for( i = 0; i < TOUCH_KEY_CNT; i++ )
+  {
+    strcpy(keyname, getGPIONameByKey(i));
+
+    pinMode(touch_status_list[i].arduino_pin, OUTPUT);
+    
+    digitalWrite(touch_status_list[i].arduino_pin, 0);
+    for( j = 0; j < TOUCH_KEY_CNT; j++ )
+    {   
+      if ( j != i ) pinMode(touch_status_list[i].arduino_pin, INPUT_PULLUP);
+    }
+    for( j = 0; j < TOUCH_KEY_CNT; j++ )
+    {   
+      if ( j != i ) 
+        if ( digitalRead(touch_status_list[i].arduino_pin) == 0 )
+          pn("short circuit between key %d (%s) and %d (%s) found", i, keyname, j, getGPIONameByKey(j)), is_error=1;
+    }
+    
+    digitalWrite(touch_status_list[i].arduino_pin, 1);
+    for( j = 0; j < TOUCH_KEY_CNT; j++ )
+    {   
+      if ( j != i ) pinMode(touch_status_list[i].arduino_pin, INPUT_PULLDOWN);
+    }
+    for( j = 0; j < TOUCH_KEY_CNT; j++ )
+    {   
+      if ( j != i ) 
+        if ( digitalRead(touch_status_list[i].arduino_pin) != 0 )
+          pn("short circuit between key %d (%s) and %d (%s) found", i, keyname, j, getGPIONameByKey(j)), is_error=1;
+    }
+  }
+  return is_error;
+}
+
+/*================================================*/
 /* Graph definitions */
 
 /* graph element struct (actually it is the edge of the ikosidodecaeder */
@@ -1003,6 +1030,112 @@ int isGELTriangleCorrect(void)
 }
 
 
+/*================================================*/
+/*
+  EOL = Edge Object List
+*/
+
+typedef struct _eo_struct eo_struct;
+
+typedef void (*eo_cb)(eo_struct *eo, unsigned msg, unsigned arg);
+
+/*
+  create
+    EO_MSG_INIT
+    
+    EO_MSG_DRAW
+    EO_MSG_TICK
+    ...
+    EO_MSG_DRAW
+    EO_MSG_TICK
+    
+    if  ( acnt == 0 )
+      EO_MSG_CLOSE
+    
+*/
+
+#define EO_MSG_NONE 0
+#define EO_MSG_INIT 1
+#define EO_MSG_CLOSE 2
+#define EO_MSG_DRAW 3
+#define EO_MSG_SELECT 4
+#define EO_MSG_TICK 5
+
+
+void eo_cb(eo_struct *eo, unsigned msg, unsigned arg)
+{
+  
+}
+
+struct _eo_struct
+{
+  /* callback for this object */
+  eo_cb cb;
+  
+  /* 
+    active count: 
+    0: Object not active and can be reused
+    any other value: A count value, which might be reduced by the cb
+    Assigning 0 to this value will do a self destruction of the object
+  */
+  uint16_t acnt;
+  
+  /* optional argument */
+  uint16_t arg; 
+  
+  /* internal variable */
+  uint16_t i;
+  
+  /* reference position within gel */
+  uint16_t gpos;
+
+  /* reference color of the object */
+  uint8_t r;
+  uint8_t g;
+  uint8_t b;
+  
+};
+
+#define EOL_CNT 64;
+
+eo_struct eol[EOL_CNT];
+
+void eolClear(void)
+{
+  int i;
+  for( i = 0; i < EOL_CNT; i++ )
+  {
+    eol[i].acnt = 0;
+  }
+}
+
+int eolLastPos = 0;
+
+int eolFindInactive(void)
+{
+  int i;
+  for( i = eolLastPos; i < EOL_CNT; i++ )
+  {
+    if ( eol[i].acnt == 0 )
+    {
+      eolLastPos = i;
+      return i;
+    }
+  }
+
+  for( i = 0; i < eolLastPos; i++ )
+  {
+    if ( eol[i].acnt == 0 )
+    {
+      eolLastPos = i;
+      return i;
+    }
+  }
+  return -1;
+}
+
+
+
 
 /*================================================*/
 
@@ -1078,47 +1211,6 @@ int masterModeGELShow(void)
 
 
 /*================================================*/
-/* hardware self test */
-
-int selfTest(void)
-{
-  int i, j;
-  int is_error = 0;
-  char keyname[16];
-  for( i = 0; i < TOUCH_KEY_CNT; i++ )
-  {
-    strcpy(keyname, getGPIONameByKey(i));
-
-    pinMode(touch_status_list[i].arduino_pin, OUTPUT);
-    
-    digitalWrite(touch_status_list[i].arduino_pin, 0);
-    for( j = 0; j < TOUCH_KEY_CNT; j++ )
-    {   
-      if ( j != i ) pinMode(touch_status_list[i].arduino_pin, INPUT_PULLUP);
-    }
-    for( j = 0; j < TOUCH_KEY_CNT; j++ )
-    {   
-      if ( j != i ) 
-        if ( digitalRead(touch_status_list[i].arduino_pin) == 0 )
-          pn("short circuit between key %d (%s) and %d (%s) found", i, keyname, j, getGPIONameByKey(j)), is_error=1;
-    }
-    
-    digitalWrite(touch_status_list[i].arduino_pin, 1);
-    for( j = 0; j < TOUCH_KEY_CNT; j++ )
-    {   
-      if ( j != i ) pinMode(touch_status_list[i].arduino_pin, INPUT_PULLDOWN);
-    }
-    for( j = 0; j < TOUCH_KEY_CNT; j++ )
-    {   
-      if ( j != i ) 
-        if ( digitalRead(touch_status_list[i].arduino_pin) != 0 )
-          pn("short circuit between key %d (%s) and %d (%s) found", i, keyname, j, getGPIONameByKey(j)), is_error=1;
-    }
-  }
-  return is_error;
-}
-
-/*================================================*/
 /* setup() and loop() */
 
 #define MASTER_MODE_NONE 0
@@ -1144,7 +1236,7 @@ void setup(void)
   pn("initLEDMatrix");
   initLEDMatrix();
 
-  pn("self test");
+  pn("Hardware Self Test");
   selfTest();
 
   // initialize digital pin LED_BUILTIN as an output.
