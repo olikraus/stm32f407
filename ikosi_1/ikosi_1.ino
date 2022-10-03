@@ -21,6 +21,10 @@
 #include <stdarg.h>
 
 /*================================================*/
+
+typedef int (*eo_cb)(struct _eo_struct *eo, unsigned msg, unsigned arg);
+
+/*================================================*/
 /* Wrapper for Arduino Serial.print to have something like printf() for debugging */
 
 void p(const char *fmt, ...)
@@ -224,8 +228,13 @@ void ws2812_spi_out(uint8_t *data, int cnt)
 /*================================================*/
 /* RGB Matrix */
 
+/* number of LEDs per plane */
 #define LED_CNT 64
+/* number of planes. RGB value of each plane are added and sent to the target */
+#define LED_PLANE_CNT 3
+
 uint8_t LEDMatrixData[LED_CNT*3];
+uint8_t LEDPlaneMatrixData[LED_PLANE_CNT][LED_CNT*3];
 
 void initLEDMatrix(void)
 {
@@ -247,6 +256,7 @@ void setRGB(uint8_t pos, uint8_t r, uint8_t g, uint8_t b)
   }
 }
 
+/*
 void clearRGBMatrix(void)
 {
   for( uint8_t i = 0; i < 64; i++ )
@@ -254,6 +264,93 @@ void clearRGBMatrix(void)
     setRGB(i, 0, 0, 0);
   }  
 }
+*/
+
+void sendAllPlanes(void)
+{
+  int i, plane;
+  unsigned v;
+  for( i = 0; i < 64*3; i+=3 )
+  {
+    LEDMatrixData[i] = 0;
+    LEDMatrixData[i+1] = 0;
+    LEDMatrixData[i+2] = 0;
+    for( plane = LED_PLANE_CNT-1; plane >= 0; plane-- )
+    {
+      if ( plane == 0 )
+      {
+        if ( LEDPlaneMatrixData[plane][i] == 0 
+            && LEDPlaneMatrixData[plane][i+1] == 0 
+            && LEDPlaneMatrixData[plane][i+2] == 0  )
+        {
+          /* do nothing */
+        }
+        else
+        {
+          /* replace color */
+          LEDMatrixData[i] = LEDPlaneMatrixData[plane][i];
+          LEDMatrixData[i+1] = LEDPlaneMatrixData[plane][i+1];
+          LEDMatrixData[i+2] = LEDPlaneMatrixData[plane][i+2];          
+        }
+      }
+      else
+      {
+        /* green */
+        v = LEDMatrixData[i] + LEDPlaneMatrixData[plane][i];
+        if ( v >= 255 )
+          v = 255;
+        LEDMatrixData[i] = v;
+        /* red */
+        v = LEDMatrixData[i+1] + LEDPlaneMatrixData[plane][i+1];
+        if ( v >= 255 )
+          v = 255;
+        LEDMatrixData[i+1] = v;
+        /* blue */
+        v = LEDMatrixData[i+2] + LEDPlaneMatrixData[plane][i+2];
+        if ( v >= 255 )
+          v = 255;
+        LEDMatrixData[i+2] = v;
+      }
+    }
+  }
+  sendLEDMatrix();
+}
+
+void setPlaneRGB(unsigned plane, uint8_t pos, uint8_t r, uint8_t g, uint8_t b)
+{
+  if ( plane < LED_PLANE_CNT )
+  {
+    if ( pos < 64 )
+    {
+      LEDPlaneMatrixData[plane][pos*3] = g;
+      LEDPlaneMatrixData[plane][pos*3+1] = r;
+      LEDPlaneMatrixData[plane][pos*3+2] = b;
+    }
+  }
+}
+
+
+void clearPlane(unsigned plane)
+{
+  int i;
+  if ( plane < LED_PLANE_CNT )
+  {
+    for( i = 0; i < 64*3; i++ )
+    {
+      LEDPlaneMatrixData[plane][i] = 0;
+    }
+  }
+}
+
+void clearAllPlanes(void)
+{
+  int plane;
+  for( plane = 0; plane < LED_PLANE_CNT; plane++ )
+    clearPlane(plane);
+}
+
+
+
 
 /* https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both */
 void hsv_to_rgb(uint8_t h, uint8_t s, uint8_t v, uint8_t *r, uint8_t *g, uint8_t *b)
@@ -582,7 +679,7 @@ void signalKeyPressEvent(int key, uint16_t cap)
     cap,
     getKeyInfoString(key));
     
-  setRGB(key_to_LED_map[key], 200, 0, 100);  
+  setPlaneRGB(0, key_to_LED_map[key], 200, 0, 100);  
   current_key = key;
 }
 
@@ -595,7 +692,7 @@ void signalKeyPressEvent(int key, uint16_t cap)
 void signalKeyReleasedEvent(int key)
 {  
   pn("%s released", getKeyInfoString(key));
-  setRGB(key_to_LED_map[key], 0, 20, 0);  
+  setPlaneRGB(0, key_to_LED_map[key], 0, 0, 0);  
   current_key = -1;
 }
 
@@ -1037,7 +1134,9 @@ int isGELTriangleCorrect(void)
 
 typedef struct _eo_struct eo_struct;
 
-typedef void (*eo_cb)(eo_struct *eo, unsigned msg, unsigned arg);
+/*
+  return 0: msg not handled
+*/
 
 /*
   create
@@ -1062,11 +1161,6 @@ typedef void (*eo_cb)(eo_struct *eo, unsigned msg, unsigned arg);
 #define EO_MSG_TICK 5
 
 
-void eo_cb(eo_struct *eo, unsigned msg, unsigned arg)
-{
-  
-}
-
 struct _eo_struct
 {
   /* callback for this object */
@@ -1079,9 +1173,10 @@ struct _eo_struct
     Assigning 0 to this value will do a self destruction of the object
   */
   uint16_t acnt;
+  uint16_t initial_acnt;
   
   /* optional argument */
-  uint16_t arg; 
+  uint16_t oarg; 
   
   /* internal variable */
   uint16_t i;
@@ -1090,15 +1185,38 @@ struct _eo_struct
   uint16_t gpos;
 
   /* reference color of the object */
-  uint8_t r;
-  uint8_t g;
-  uint8_t b;
+  uint8_t p;    /* plane */
+  uint8_t r;    /* red */
+  uint8_t g;    /* green */
+  uint8_t b;    /* blue */
   
 };
 
-#define EOL_CNT 64;
+
+
+#define EOL_CNT 64
 
 eo_struct eol[EOL_CNT];
+
+int eoDefaultCB(struct _eo_struct *eo, unsigned msg, unsigned arg)
+{
+  pn("eoDefaultCB called msg=%d", msg);
+  switch(msg)
+  {
+    case EO_MSG_DRAW:
+      return 1;
+    case EO_MSG_TICK:
+      return 1;
+    case EO_MSG_SELECT:
+      return 1;
+    case EO_MSG_INIT:
+      return 1;
+    case EO_MSG_CLOSE:
+      return 1;
+  }
+  return 0;
+}
+
 
 void eolClear(void)
 {
@@ -1106,6 +1224,7 @@ void eolClear(void)
   for( i = 0; i < EOL_CNT; i++ )
   {
     eol[i].acnt = 0;
+    eol[i].cb = eoDefaultCB;
   }
 }
 
@@ -1114,20 +1233,110 @@ int eolLastPos = 0;
 int eolFindInactive(void)
 {
   int i;
+  pn("eolFindInactive start");
+  
+  if ( eolLastPos >= EOL_CNT )
+    eolLastPos = 0;
+  
   for( i = eolLastPos; i < EOL_CNT; i++ )
   {
     if ( eol[i].acnt == 0 )
     {
       eolLastPos = i;
+      pn("eolFindInactive found1 = %d", i);
       return i;
     }
   }
+
+  pn("eolFindInactive middle");
 
   for( i = 0; i < eolLastPos; i++ )
   {
     if ( eol[i].acnt == 0 )
     {
       eolLastPos = i;
+      pn("eolFindInactive found2 = %d", i);
+      return i;
+    }
+  }
+  
+  pn("eolFindInactive not found");
+  return -1;
+}
+
+int eolSendMsg(int epos, unsigned msg, unsigned arg)
+{
+  if ( epos < 0 )
+    return 0;
+  if ( epos >= EOL_CNT )
+    return 0;
+  if ( eol[epos].acnt == 0 )
+    return 0;
+  return eol[epos].cb(eol+epos, msg, arg);
+}
+
+void eolSendCloseMsg(int epos)
+{
+  if ( epos < 0 )
+    return;
+  if ( epos >= EOL_CNT )
+    return;
+    
+  eolSendMsg(epos, EO_MSG_CLOSE, 0);
+  eol[epos].acnt = 0;
+  eol[epos].cb = eoDefaultCB;
+}
+
+int eolSendAllMsg(unsigned msg, unsigned arg)
+{
+  int i, cnt = 0;
+  for( i = 0; i < EOL_CNT; i++ )
+  {
+    if ( eol[i].acnt != 0 )
+    {
+      cnt++;
+      eolSendMsg(i, msg, arg);
+      if ( eol[i].acnt == 0 )
+        eolSendCloseMsg(i);
+    }
+  }
+  return cnt;
+}
+
+int eolSendAllDraw(void)
+{
+  return eolSendAllMsg(EO_MSG_DRAW, 0);
+}
+
+int eolSendAllTick(void)
+{
+  return eolSendAllMsg(EO_MSG_TICK, 0);
+}
+
+/*
+  forcefully get an inactive eo
+  same as eolFindInactive() but will make an active object inactive
+*/
+int eolGetInactive(void)
+{
+  int epos = eolFindInactive();
+  pn("eolGetInactive epos=%d", epos);
+  if ( epos >= 0 )
+    return epos;
+  eolLastPos++;
+  if ( eolLastPos >= EOL_CNT )
+    eolLastPos = 0;    
+  eolSendCloseMsg(eolLastPos);
+  return eolLastPos;
+}
+
+int eolFindByGELPos(uint16_t gpos)
+{
+  int i;
+  for( i = 0; i < EOL_CNT; i++ )
+  {
+    if ( eol[i].gpos == gpos )
+    {
       return i;
     }
   }
@@ -1135,6 +1344,226 @@ int eolFindInactive(void)
 }
 
 
+
+int eolCreate(eo_cb cb, uint16_t acnt, uint16_t oarg, uint16_t gpos, uint8_t plane, uint8_t r, uint8_t g, uint8_t b)
+{
+  int epos = eolGetInactive();
+  if ( acnt == 0 )
+    acnt = 1;
+  eol[epos].cb = cb;
+  eol[epos].initial_acnt = acnt;
+  eol[epos].acnt = acnt;
+  eol[epos].oarg = oarg;
+  eol[epos].gpos = gpos;
+  eol[epos].p = plane;
+  eol[epos].r = r;
+  eol[epos].g = g;
+  eol[epos].b =b;
+  eol[epos].i = 0;
+  pn("eolCreate epos=%d eol[epos].acnt=%d", epos, eol[epos].acnt);
+  eolSendMsg(epos, EO_MSG_INIT, 0);
+  return epos;
+}
+
+/* intensity: 0...256 */
+void eoDrawRGB(struct _eo_struct *eo, unsigned intensity)
+{
+  setPlaneRGB(eo->p, gel[eo->gpos].led, 
+    (eo->r*intensity)>>8,
+    (eo->g*intensity)>>8, 
+    (eo->b*intensity)>>8   );  
+}
+
+void eoDrawGELRGB(struct _eo_struct *eo, unsigned gpos, unsigned intensity)
+{
+  setPlaneRGB(eo->p, gel[gpos].led, 
+    (eo->r*intensity)>>8,
+    (eo->g*intensity)>>8, 
+    (eo->b*intensity)>>8   );  
+}
+
+
+/*================================================*/
+
+/*
+  x: position on the ring: 0..255
+  w: width of the trapezoid, 0..255
+  r: length of left and right ramp, 0..255 ( but usually <30 )
+
+  for w=10, r = 20
+  x=0 --> 255
+  x=10 --> 255
+  x=245 --> 255
+  x=255 --> 255
+     (upper part of the trapezoid is between 255-w .. 255 and 0 .. w)
+  x=20 --> around 128
+  x=31 --> 0
+    The rising ramp is from 255-w-r to 255-r 
+    The falling ramp is from w to w+r
+    
+  Probably it is more a bathtub function
+    0..w        high
+    w..w+r    falling
+    w+r .. 255-w-r  zero
+    255-w-r..255-w rising
+    255-w .. 255 high
+*/
+uint8_t trapezoid_fn(uint8_t x, uint8_t w, uint8_t r)
+{
+  uint8_t tu;
+  uint8_t tl = 0;
+  uint8_t yu;
+  uint8_t yl;
+  if ( w == 0 )
+    return 0;
+  if ( w == 255 )
+    return 255;
+  tu = w+1;
+  
+  tu/=2;
+  if ( x <= tu )
+    return 255;
+  tl -= tu;
+  if ( x >= tl )
+    return 255;
+
+  if ( x > tu+r )
+    yu = 0;
+  else
+    yu = (((unsigned)tu+r-x)*(unsigned)256)/(unsigned)r;
+  
+  if ( x < tl-r )
+    yl = 0;
+  else
+    yl = (((unsigned)x-tl+r)*(unsigned)256)/(unsigned)r;
+  
+  if ( yu > yl )
+    return yu;
+  return yl;
+}
+
+/*
+  offset: 0..255
+*/
+void eoDrawTrapezoidPentagon(struct _eo_struct *eo, uint8_t master_brightness, uint8_t offset, uint8_t w, uint8_t r)
+{
+  unsigned i;
+  uint8_t x, y;
+  unsigned gpos = eo->gpos;
+  for( i = 0; i < 5; i++ )
+  {
+    x = ( i * 256 ) / 5 + offset;
+    y = trapezoid_fn(x, w, r);
+    y = ((unsigned)y * (unsigned)master_brightness ) / (unsigned)255;
+    eoDrawGELRGB(eo, gpos, y);
+    gpos = gel[gpos].next[5];
+  }
+}
+
+
+/*================================================*/
+
+/*
+  acnt: 0xffff --> no fade out, any other value: fade out (300 seems to be a second or so)
+  oarg: max intensity (<= 256 )
+  gpos: used
+  plane, r, g, b: used
+  
+  eolCreate(eoEdgeBlinkCB, 1, 200, gpos, 1, 200, 200, 200)
+
+*/
+int eoEdgeBlinkCB(struct _eo_struct *eo, unsigned msg, unsigned arg)
+{
+  const uint16_t period_in_ticks = 300;
+  unsigned intensity = 0;
+  switch(msg)
+  {
+    case EO_MSG_DRAW:
+      /* derive intensity from the ticks */
+      if ( eo->i < period_in_ticks/2 )
+      {
+        intensity = period_in_ticks/2 - eo->i;
+      }
+      else
+      {
+        intensity =  eo->i - period_in_ticks/2;
+      }
+      
+      /* intensity is now between 0 and period_in_ticks/2 */ 
+      /* scale intensity to 0..eo->oarg (intentionall oversized */
+      intensity = (intensity*eo->oarg)/(period_in_ticks/2);
+      if ( intensity > 256 )
+        intensity = 256;        
+      if ( eo->acnt != 0x0ffff )
+        intensity = ((uint32_t)intensity*(uint32_t)eo->acnt)/(uint32_t)eo->initial_acnt;
+      if ( intensity > 256 )
+        intensity = 256;
+        
+      /* draw the edge */
+      eoDrawRGB(eo, intensity);
+      return 1;
+    case EO_MSG_TICK:
+      eo->i++;
+      if ( eo->i >= period_in_ticks )
+        eo->i = 0;
+      if ( eo->acnt != 0x0ffff && eo->acnt > 0)
+        eo->acnt--;
+      return 1;
+    case EO_MSG_SELECT:
+      return 1;
+    case EO_MSG_INIT:
+      return 1;
+    case EO_MSG_CLOSE:
+      eoDrawRGB(eo, 0);
+      return 1;
+  }
+  return 0;
+}
+
+
+/*
+  acnt: 0xffff --> no fade out, any other value: fade out (300 seems to be a second or so)
+  oarg: max intensity (<= 256 )
+  gpos: used
+  plane, r, g, b: used
+  
+  eolCreate(eoEdgeBlinkCB, 1, 200, gpos, 1, 200, 200, 200)
+
+*/
+int eoRotatingPentagonCB(struct _eo_struct *eo, unsigned msg, unsigned arg)
+{
+  const uint16_t period_in_ticks = 300;
+  uint8_t intensity = 0;
+  switch(msg)
+  {
+    case EO_MSG_DRAW:
+      intensity = 255; 
+        
+      if ( eo->acnt != 0x0ffff )
+        intensity = ((uint32_t)intensity*(uint32_t)eo->acnt)/(uint32_t)eo->initial_acnt;
+      if ( intensity > 255 )
+        intensity = 255;
+
+      eoDrawTrapezoidPentagon(eo, intensity, (eo->i*255)/period_in_ticks, 255/7, 255/5);
+
+      return 1;
+    case EO_MSG_TICK:
+      eo->i++;
+      if ( eo->i >= period_in_ticks )
+        eo->i = 0;
+      if ( eo->acnt != 0x0ffff && eo->acnt > 0)
+        eo->acnt--;
+      return 1;
+    case EO_MSG_SELECT:
+      return 1;
+    case EO_MSG_INIT:
+      return 1;
+    case EO_MSG_CLOSE:
+      eoDrawRGB(eo, 0);
+      return 1;
+  }
+  return 0;
+}
 
 
 /*================================================*/
@@ -1147,7 +1576,7 @@ int masterModeGELShow(void)
   {
     case 0:
       state = 1;
-      clearRGBMatrix();
+      clearAllPlanes();
       break;
     case 1:
       if ( current_key >= 0 )
@@ -1160,9 +1589,9 @@ int masterModeGELShow(void)
         for( i = 0; i < 5; i++ )
         {
           if ( i == 1 )
-            setRGB(gel[pos].led, 0,30, 30);  
+            setPlaneRGB(1, gel[pos].led, 0,30, 30);  
           else
-            setRGB(gel[pos].led, 0, 0, 30);  
+            setPlaneRGB(1, gel[pos].led, 0, 0, 30);  
           pos = gel[pos].next[0];
         }
 
@@ -1171,9 +1600,9 @@ int masterModeGELShow(void)
         for( i = 1; i < 3; i++ )
         {
           if ( i == 1 )
-            setRGB(gel[pos].led, 0,30, 30);  
+            setPlaneRGB(1, gel[pos].led, 0,30, 30);  
           else
-            setRGB(gel[pos].led, 0, 0, 30);  
+            setPlaneRGB(1, gel[pos].led, 0, 0, 30);  
           pos = gel[pos].next[3];
         }
 
@@ -1182,26 +1611,27 @@ int masterModeGELShow(void)
         for( i = 1; i < 10; i++ )
         {
           if ( i == 1 )
-            setRGB(gel[pos].led, 30,30, 0);  
+            setPlaneRGB(1, gel[pos].led, 30,30, 0);  
           else
-            setRGB(gel[pos].led, 30, 0, 0);  
+            setPlaneRGB(1, gel[pos].led, 30, 0, 0);  
           /* looping over the outer ring requires alternating use of next[1] and next[4] */
           if ( (i & 1) != 0 )
             pos = gel[pos].next[1];
           else
             pos = gel[pos].next[4];
         }
+        pos = getGELPosByKey(current_key);
+        eolSendCloseMsg(eolFindByGELPos(pos));
+        //eolCreate(eoEdgeBlinkCB, 0xffff, 1500, pos, 2, 200, 200, 200);
+        eolCreate(eoRotatingPentagonCB, 1500, 1500, pos, 2, 200, 0, 200);
         
-        //setRGB(gel[gel[pos].next[1]].led, 30, 0, 0);  
-        //setRGB(gel[gel[pos].next[4]].led, 0, 30, 0);  
-
         state = 2;
       }
       break;
     case 2:
       if ( current_key < 0 )
       {
-        clearRGBMatrix();
+        clearAllPlanes();
         state = 1;
       }
       break;
@@ -1235,6 +1665,8 @@ void setup(void)
   
   pn("initLEDMatrix");
   initLEDMatrix();
+  clearAllPlanes();
+  eolClear();
 
   pn("Hardware Self Test");
   selfTest();
@@ -1280,8 +1712,12 @@ void setup(void)
 // the loop function runs over and over again forever
 void loop() 
 {
+
+
   updateTouchKeys();
-  sendLEDMatrix();
+  eolSendAllDraw();
+  eolSendAllTick();
+  sendAllPlanes();
 
   switch(master_mode)
   {
