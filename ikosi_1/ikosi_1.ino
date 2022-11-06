@@ -21,6 +21,16 @@
 #include <stdarg.h>
 
 /*================================================*/
+/* configuration */
+
+/* As soon as the user select a key, then the corresponding edge will become this color */
+uint8_t sensor_key_select_color_r = 0;
+uint8_t sensor_key_select_color_g = 200;
+uint8_t sensor_key_select_color_b = 0;
+
+
+
+/*================================================*/
 
 typedef int (*eo_cb)(struct _eo_struct *eo, unsigned msg, unsigned arg);
 
@@ -37,6 +47,7 @@ void p(const char *fmt, ...)
   Serial.print(s);
 }
 
+/* same as p() but adds a line feed at the end */
 void pn(const char *fmt, ...)
 {
   static char s[1024];
@@ -50,17 +61,26 @@ void pn(const char *fmt, ...)
 
 
 /*================================================*/
-/* WS2812 Interface */
-/*
+/* 
+  Interface to the 16x16 LED Matrix (64 LEDs, 4 unused)
+  Each LED includes a WS2812 controller (WS2812 Interface) 
+  
+  The WS2812 receives input via SPI bus.
+  The SPI bis is "misused" to generate the required wave form for the WS2812
+  4 Bit in the SPI Bus are used to sent one bit of information to the 64x WS2812 
+  controller.
 
-  SystemCoreClock: 168 MHz
-  APB2: 84Mhz 
+  Assumptions:
+    SystemCoreClock: 168 MHz
+    APB2: 84Mhz 
 
   SPI Clock BR = 100 --> Clock Divide by 32 --> 84 / 32 = 2.625 MHz --> 380ns
 
   per bit:
-    0: 1000 --> 380ns pulse
-    1: 1100 --> 760ns pulse
+    0: 1000 --> 380ns pulse for the WS2812 (logical 0 bit)
+    1: 1100 --> 760ns pulse for the WS2812 (logical 1 bit)
+  
+  Each SPI word is 16 bit in size: We can transfer 4 bits per SPI word.
   
 */
 
@@ -78,14 +98,11 @@ struct _ws2812_spi
   volatile int in_progress;
 };
 typedef struct _ws2812_spi ws2812_spi_t;
-
 ws2812_spi_t ws2812_spi;
-
 
 void ws2812_spi_init(void)
 {
-  ws2812_spi.isr_cnt = 0;
-  
+  ws2812_spi.isr_cnt = 0;  
   RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
   delay(1);
   SPI1->CR1 = 0;  /* disable SPI */
@@ -96,17 +113,13 @@ void ws2812_spi_init(void)
 
   GPIOA->MODER &= ~GPIO_MODER_MODER7;
   GPIOA->MODER |= GPIO_MODER_MODER7_1; /* alternate function mode */
-
   GPIOA->OTYPER &= ~GPIO_OTYPER_OT7;  /* push pull */
   GPIOA->PUPDR &= ~GPIO_PUPDR_PUPD7;  /* no pullup/pulldown */
-  
   GPIOA->AFR[0] &= ~GPIO_AFRL_AFSEL7;
   GPIOA->AFR[0] |= GPIO_AFRL_AFSEL7_2 | GPIO_AFRL_AFSEL7_0; /* configure AF5, bitmask 0101 */
-
   NVIC_SetPriority(SPI1_IRQn, 2);  /* 0: highes priority, 3: lowest priority */
   NVIC_EnableIRQ(SPI1_IRQn);    
 }
-
 
 /*
   This SPI handler will do an online conversion of the bit values to the WS2812B format 
@@ -116,9 +129,6 @@ void ws2812_spi_init(void)
 */
 extern "C" void __attribute__ ((interrupt)) SPI1_IRQHandler(void)
 {
-  //uint32_t start = SysTick->VAL;
-  //uint32_t end;
-
   ws2812_spi.spi_status_register = SPI1->SR;
   ws2812_spi.isr_cnt++;
 
@@ -170,20 +180,10 @@ extern "C" void __attribute__ ((interrupt)) SPI1_IRQHandler(void)
       ws2812_spi.in_progress = 0;
     }
   } 
-  /*
-  end = SysTick->VAL;
-  if ( start < end )
-    start += SysTick->LOAD;
-  start -= end;      // calculate the duration in ticks
-  if ( ws2812_spi.max_isr_ticks < start )
-    ws2812_spi.max_isr_ticks = start; // calculate maximum
-  ws2812_spi.isr_ticks = start;
-  */
 }
 
 void ws2812_spi_out(uint8_t *data, int cnt)
 {
-
   /* wait until data is transmitted */
   if ( ws2812_spi.in_progress != 0 )
   {
@@ -191,9 +191,7 @@ void ws2812_spi_out(uint8_t *data, int cnt)
       ;
     delay(1);
   }
-
   SPI1->CR1 = 0;    /* disable SPI1 */
-  
   SPI1->CR1 = 0
     | SPI_CR1_DFF   /* select 16 bit data format */
     | SPI_CR1_BR_2  /* 100: divide by 32 */
@@ -203,30 +201,45 @@ void ws2812_spi_out(uint8_t *data, int cnt)
     | SPI_CR1_BIDIMODE /* select single line (Master: MOSI pin) bidirectional mode */
     | SPI_CR1_BIDIOE   /* select transmit mode*/
     ;
-  
   SPI1->CR2 = 0
     | SPI_CR2_TXEIE /* buffer empty interrupt */
     ;
-  
   ws2812_spi.spi_data = data;
   ws2812_spi.byte_cnt = cnt;
   ws2812_spi.bit_cnt = 0;
   ws2812_spi.post_data_wait = 9;    /* 8 would be sufficient, use 9 to be on the safe side */
   ws2812_spi.in_progress  = 1;
-
-
   SPI1->CR1 |= SPI_CR1_SPE;   /* enable SPI */
-  
-  //ws2812_spi.spi_status_register = SPI1->SR;
-
   /* load first byte, so that the TXRDY interrupt will be generated */
   /* this is just a zero byte and is ignored by the WS2812B */
   SPI1->DR = 0;  
-
 }
 
 /*================================================*/
-/* RGB Matrix */
+/* 
+  RGB Matrix Procedure
+  
+  "Matrix" is misleading: Although the hardware is a 16x16 matrix, the
+  LEDs of that matrix are accessed by there sequence number (0...63)
+
+  The RGB Matrix is build on top of the WS2812 procedures.
+  
+  One RGB Matrix "Plane": Contains the RGB information for 64 LEDs.
+  
+  There are several special planes:
+  LEDMatrixData: This is the plane, which is set to the 16x16 LED Matrix by
+    the WS2812 procedures
+  LEDPlaneMatrixData: This is an array with multiple planes (LED_PLANE_CNT)
+  The idea is to add the RGB values of all the planes in "LEDPlaneMatrixData" 
+  and store the resulting RGB value in LEDMatrixData (sendAllPlanes()).
+  
+  LEDPlaneMatrixData[0] is an exception: none-zero values
+  are copied to LEDMatrixData without adding more data.
+  LEDPlaneMatrixData[0] will stay zero except fo the element which has
+  been touched by the user. So LEDPlaneMatrixData[0] will give
+  immediate feedback to the user, which element has been pressed.
+  
+*/
 
 /* number of LEDs per plane */
 #define LED_CNT 64
@@ -246,26 +259,12 @@ void sendLEDMatrix(void)
   ws2812_spi_out(LEDMatrixData, LED_CNT*3);
 }
 
-void setRGB(uint8_t pos, uint8_t r, uint8_t g, uint8_t b)
-{
-  if ( pos < 64 )
-  {
-    LEDMatrixData[pos*3] = g;
-    LEDMatrixData[pos*3+1] = r;
-    LEDMatrixData[pos*3+2] = b;
-  }
-}
-
 /*
-void clearRGBMatrix(void)
-{
-  for( uint8_t i = 0; i < 64; i++ )
-  {
-    setRGB(i, 0, 0, 0);
-  }  
-}
+  Sum up planes 1 to LED_PLANE_CNT-1.
+  Plane 0 will overwrite the result and replace the result if the RGB value in 
+  plane 0 is not black (plane 0 overrides all other planes).
+  The result is sent to the RGB 16x16 matrix
 */
-
 void sendAllPlanes(void)
 {
   int i, plane;
@@ -275,6 +274,14 @@ void sendAllPlanes(void)
     LEDMatrixData[i] = 0;
     LEDMatrixData[i+1] = 0;
     LEDMatrixData[i+2] = 0;
+    
+    /*
+      Sum up all RGB channels from all planes.
+      Summed up RGB values are limited to white
+      Start with the highest plane.
+      The lowest plane 0 may discard all calculations are overwrite
+      the color if the RGB color is not black in plane 0.
+    */
     for( plane = LED_PLANE_CNT-1; plane >= 0; plane-- )
     {
       if ( plane == 0 )
@@ -316,20 +323,6 @@ void sendAllPlanes(void)
   sendLEDMatrix();
 }
 
-void setPlaneRGB(unsigned plane, uint8_t pos, uint8_t r, uint8_t g, uint8_t b)
-{
-  if ( plane < LED_PLANE_CNT )
-  {
-    if ( pos < 64 )
-    {
-      LEDPlaneMatrixData[plane][pos*3] = g;
-      LEDPlaneMatrixData[plane][pos*3+1] = r;
-      LEDPlaneMatrixData[plane][pos*3+2] = b;
-    }
-  }
-}
-
-
 void clearPlane(unsigned plane)
 {
   int i;
@@ -342,6 +335,13 @@ void clearPlane(unsigned plane)
   }
 }
 
+/*
+  void clearAllPlanes(void)
+  
+  Description:
+    Clear all planes with black color.
+
+*/
 void clearAllPlanes(void)
 {
   int plane;
@@ -349,6 +349,35 @@ void clearAllPlanes(void)
     clearPlane(plane);
 }
 
+
+/*
+  void setPlaneRGB(unsigned plane, uint8_t pos, uint8_t r, uint8_t g, uint8_t b)
+  
+  Description:
+    Set a single color in a plane.
+    Plane 0 is special: If plane 0 color is not black, than this color will
+    overwrite all other colors.
+    Colors in all other planes above 0 (1..LED_PLANE_CNT-1) are summed up
+    
+  Args:
+    plane:      0..LED_PLANE_CNT-1
+    pos:      LED number, either from the "key_to_LED_map[]" array or the "gel.led" member.
+    r           Red channel of the LED color (0..255)
+    g           Green channel of the LED color (0..255)
+    b           Blue channel of the LED color (0..255)  
+*/
+void setPlaneRGB(unsigned plane, uint8_t pos, uint8_t r, uint8_t g, uint8_t b)
+{
+  if ( plane < LED_PLANE_CNT )
+  {
+    if ( pos < 64 )
+    {
+      LEDPlaneMatrixData[plane][pos*3] = g;
+      LEDPlaneMatrixData[plane][pos*3+1] = r;
+      LEDPlaneMatrixData[plane][pos*3+2] = b;
+    }
+  }
+}
 
 
 
@@ -395,13 +424,58 @@ void hsv_to_rgb(uint8_t h, uint8_t s, uint8_t v, uint8_t *r, uint8_t *g, uint8_t
     }
 }
 
-void setHSV(uint8_t pos, uint8_t h, uint8_t s, uint8_t v)
+/*
+  void setPlaneHSV(unsigned plane, uint8_t pos, uint8_t h, uint8_t s, uint8_t v)
+  
+  Description:
+    Set a single color in a plane.
+    Plane 0 is special: If plane 0 color is not black, than this color will
+    overwrite all other colors.
+    Colors in all other planes above 0 (1..LED_PLANE_CNT-1) are summed up
+    
+  Args:
+    plane:      0..LED_PLANE_CNT-1
+    pos:      LED number, either from the "key_to_LED_map[]" array or the "gel.led" member.
+    h           Hue of the LED color (0..255)
+    s           Saturation of the LED color (0..255)
+    v           Value (brightness) of the LED color (0..255)      
+*/
+void setPlaneHSV(unsigned plane, uint8_t pos, uint8_t h, uint8_t s, uint8_t v)
 {
-  hsv_to_rgb(h, s, v, LEDMatrixData+pos*3+1, LEDMatrixData+pos*3, LEDMatrixData+pos*3+2);
+  hsv_to_rgb(h, s, v, 
+    &(LEDPlaneMatrixData[plane][pos*3+1]), 
+    &(LEDPlaneMatrixData[plane][pos*3]), 
+    &(LEDPlaneMatrixData[plane][pos*3+2]));
 }
 
 
 /*================================================*/
+/*
+  Low level touch sensor procedures
+  
+    - There are 60 touch sensors (one for each edge of the ikosidodecaedron)
+    - Each of the 60 touch sensors is mapped to a LED (key_to_LED_map[])
+    - Each sensor in connected to one GPIO
+    - Possible GPIOs are listed in "touch_status_list"
+    - The size of "touch_status_list" is TOUCH_KEY_CNT
+    - Not all entries in "touch_status_list" are used.
+    - The key pressed/release value is an index int touch_status_list.
+    - The key value is a number between 0 and TOUCH_KEY_CNT-1.
+    - The key value might be larger than 59 because there are some unused GPIOs in "touch_status_list"
+    
+    The sensor algorithm is based on the discharge time of a GPIO:
+      1. Step: Charge the GPIO with some current
+      2. Step: Disconnnect charge and measure discharge time
+      3. Step: If discarge time is lower then a given threshold, then it is assumed that the sensor is pressed
+    
+    The measure algorithm combines GPIOs from several GPIO Ports (contains 16 GPIO pins)
+    to a single measure run. As a consequence, the measure has to happen only
+    once for all GPIOs of a single GPIO Port.
+      - Each GPIO Port contains 16 GPIO pins
+      - This controller contains 5 GPIO Ports (up to 5x16 = 80 GPIOs)
+      - The measure algorithm will use the touch_measure_list
+  
+*/
 
 #define TOUCH_KEY_STATUS_RELEASED 0
 #define TOUCH_KEY_STATUS_RP_DEBOUNCE1 1
@@ -435,7 +509,6 @@ struct touch_measure_struct {
 
 
 
-/*================================================*/
 /* Touch Sensor */
 
 /*
@@ -559,6 +632,7 @@ uint16_t touch_io_sample_array[TOUCH_IO_SAMPLE_COUNT];
 /*================================================*/
 /*
   the following two procedures will establish the links between "touch_measure_list" and "touch_status_list"
+  called by buildTouchMeasureList()
 */
 
 void fillTouchMeasure(struct touch_measure_struct *m, GPIO_TypeDef *gpio)
@@ -581,9 +655,34 @@ void fillTouchMeasure(struct touch_measure_struct *m, GPIO_TypeDef *gpio)
 }
 
 /*
-  Return the GPIO number of the uC port to which the key (sensor) is connected.
-  This should look like "B14" or similar.
-  "key" is an index into "touch_status_list"
+  Prepare the touch_measure_list[] by filling in values from touch_status_list[].
+  Called once during startup of the controller.
+*/
+void buildTouchMeasureList(void)
+{
+  fillTouchMeasure(touch_measure_list+0, GPIOA);
+  fillTouchMeasure(touch_measure_list+1, GPIOB);
+  fillTouchMeasure(touch_measure_list+2, GPIOC);
+  fillTouchMeasure(touch_measure_list+3, GPIOD);
+  fillTouchMeasure(touch_measure_list+4, GPIOE);  
+}
+
+
+
+/*
+  const char *getGPIONameByKey(int key)
+  
+  Description:
+    Return the GPIO number of the uC port to which the key (sensor) is connected.
+    This should look like "B14" or similar.
+    "key" is an index into "touch_status_list"
+    This is used for debugging and called by getKeyInfoString()
+    
+  Args:
+    key: Index into touch_status_list[] (the pressed/released sensor key)
+    
+  Returns:
+    Statiic string with the GPIO Name to which the given sensor key is connected
 */
 const char *getGPIONameByKey(int key)
 {
@@ -599,9 +698,18 @@ const char *getGPIONameByKey(int key)
 }
 
 /*
-  Return an string which describes the key enclosed in [ ].
-  It contains the key number, the GPIO port of the key and the mapped LED number.
-  "key" is an index into "touch_status_list"
+  const char *getKeyInfoString(int key)
+  
+  Description:
+    Return an string which describes the key enclosed in [ ].
+    It contains the key number, the GPIO port of the key and the mapped LED number.
+    "key" is an index into "touch_status_list"
+    
+  Args:
+    key: Index into touch_status_list[] (the pressed/released sensor key)
+    
+  Returns:
+    Statiic string with technical description for the given key
 */
 const char *getKeyInfoString(int key)
 {
@@ -616,25 +724,13 @@ const char *getKeyInfoString(int key)
   return s;
 }
 
-void buildTouchMeasureList(void)
-{
-  /*
-  int i;
-  for( i = 0; i < TOUCH_KEY_CNT; i++ )
-    key_to_LED_map[i] = -1;
-  */
-
-  fillTouchMeasure(touch_measure_list+0, GPIOA);
-  fillTouchMeasure(touch_measure_list+1, GPIOB);
-  fillTouchMeasure(touch_measure_list+2, GPIOC);
-  fillTouchMeasure(touch_measure_list+3, GPIOD);
-  fillTouchMeasure(touch_measure_list+4, GPIOE);  
-}
-
 /*
   get the key (index into "touch_status_list") for a given led
   return -1 if the LED can't be controlled
+  Inverse operation of key_to_LED_map[] 
+  OBSOLETE?
 */
+/*
 int getKeyByLED(int led)
 {
   int i;
@@ -643,7 +739,7 @@ int getKeyByLED(int led)
       return i;
   return -1;
 }
-
+*/
 
 /*
   returns the number of sensor keys assigned, should be 60 
@@ -657,6 +753,47 @@ int16_t getAssignedKeyCount(void)
     if ( key_to_LED_map[i] >= 0 )
       cnt++;
   return cnt;
+}
+
+/*================================================*/
+/* hardware self test for the sensor keys */
+
+int executeKeySelfTest(void)
+{
+  int i, j;
+  int is_error = 0;
+  char keyname[16];
+  for( i = 0; i < TOUCH_KEY_CNT; i++ )
+  {
+    strcpy(keyname, getGPIONameByKey(i));
+
+    pinMode(touch_status_list[i].arduino_pin, OUTPUT);
+    
+    digitalWrite(touch_status_list[i].arduino_pin, 0);
+    for( j = 0; j < TOUCH_KEY_CNT; j++ )
+    {   
+      if ( j != i ) pinMode(touch_status_list[i].arduino_pin, INPUT_PULLUP);
+    }
+    for( j = 0; j < TOUCH_KEY_CNT; j++ )
+    {   
+      if ( j != i ) 
+        if ( digitalRead(touch_status_list[i].arduino_pin) == 0 )
+          pn("short circuit between key %d (%s) and %d (%s) found", i, keyname, j, getGPIONameByKey(j)), is_error=1;
+    }
+    
+    digitalWrite(touch_status_list[i].arduino_pin, 1);
+    for( j = 0; j < TOUCH_KEY_CNT; j++ )
+    {   
+      if ( j != i ) pinMode(touch_status_list[i].arduino_pin, INPUT_PULLDOWN);
+    }
+    for( j = 0; j < TOUCH_KEY_CNT; j++ )
+    {   
+      if ( j != i ) 
+        if ( digitalRead(touch_status_list[i].arduino_pin) != 0 )
+          pn("short circuit between key %d (%s) and %d (%s) found", i, keyname, j, getGPIONameByKey(j)), is_error=1;
+    }
+  }
+  return is_error;
 }
 
 
@@ -673,13 +810,15 @@ volatile int current_key = -1; // contains the current pressed key as global var
 */
 void signalKeyPressEvent(int key, uint16_t cap)
 {
+  /*
   pn("min cap=%d threshold=%d current cap=%d %s pressed", 
     touch_status_list[key].min_cap,
     touch_status_list[key].threshold_cap,
     cap,
     getKeyInfoString(key));
-    
-  setPlaneRGB(0, key_to_LED_map[key], 200, 0, 100);  
+  */
+  
+  setPlaneRGB(0, key_to_LED_map[key], sensor_key_select_color_r, sensor_key_select_color_g, sensor_key_select_color_b);  
   current_key = key;
 }
 
@@ -690,8 +829,10 @@ void signalKeyPressEvent(int key, uint16_t cap)
   called by updateTouchStatus(), which is called by updateTouchKeys().
 */
 void signalKeyReleasedEvent(int key)
-{  
-  pn("%s released", getKeyInfoString(key));
+{
+  /*
+    pn("%s released", getKeyInfoString(key));
+  */
   setPlaneRGB(0, key_to_LED_map[key], 0, 0, 0);  
   current_key = -1;
 }
@@ -789,8 +930,6 @@ uint32_t getTo0PosByBinarySearch(uint16_t mask)
   return l;
 }
 
-
-
 /*
 
   Measure the capacitance at the touch sensor keys. 
@@ -865,10 +1004,13 @@ void getTouchCapForPortPins(GPIO_TypeDef *gpio, uint16_t selectMask, uint16_t ch
 }
 
 /*
+  
   void updateTouchKeys(void)
   
-  Calculate the status of ALL touch senser keys by calling getTouchCapForPortPins()
-  This will call signalKeyPressEvent() and signalKeyReleasedEvent() procedures.
+  Description:
+    Calculate the status of ALL touch senser keys by calling getTouchCapForPortPins()
+    This will call signalKeyPressEvent() and signalKeyReleasedEvent() procedures.
+    This function must be called in order to detect any key press/release on the sensor keys.
   
 */
 void updateTouchKeys(void)
@@ -894,46 +1036,6 @@ void updateTouchKeys(void)
   }
 }
 
-/*================================================*/
-/* hardware self test */
-
-int selfTest(void)
-{
-  int i, j;
-  int is_error = 0;
-  char keyname[16];
-  for( i = 0; i < TOUCH_KEY_CNT; i++ )
-  {
-    strcpy(keyname, getGPIONameByKey(i));
-
-    pinMode(touch_status_list[i].arduino_pin, OUTPUT);
-    
-    digitalWrite(touch_status_list[i].arduino_pin, 0);
-    for( j = 0; j < TOUCH_KEY_CNT; j++ )
-    {   
-      if ( j != i ) pinMode(touch_status_list[i].arduino_pin, INPUT_PULLUP);
-    }
-    for( j = 0; j < TOUCH_KEY_CNT; j++ )
-    {   
-      if ( j != i ) 
-        if ( digitalRead(touch_status_list[i].arduino_pin) == 0 )
-          pn("short circuit between key %d (%s) and %d (%s) found", i, keyname, j, getGPIONameByKey(j)), is_error=1;
-    }
-    
-    digitalWrite(touch_status_list[i].arduino_pin, 1);
-    for( j = 0; j < TOUCH_KEY_CNT; j++ )
-    {   
-      if ( j != i ) pinMode(touch_status_list[i].arduino_pin, INPUT_PULLDOWN);
-    }
-    for( j = 0; j < TOUCH_KEY_CNT; j++ )
-    {   
-      if ( j != i ) 
-        if ( digitalRead(touch_status_list[i].arduino_pin) != 0 )
-          pn("short circuit between key %d (%s) and %d (%s) found", i, keyname, j, getGPIONameByKey(j)), is_error=1;
-    }
-  }
-  return is_error;
-}
 
 /*================================================*/
 /* Graph definitions */
@@ -941,8 +1043,8 @@ int selfTest(void)
 /* graph element struct (actually it is the edge of the ikosidodecaeder */
 struct ge_struct
 {
-  int16_t led;               // key can be derived with getKeyByLED(led)
-  int16_t key;              // LED can be derived via key_to_LED_map[key]
+  int16_t led;               // led number, LED can be derived via key_to_LED_map[key]
+  int16_t key;              // index into touch_status_list[] 
   int16_t pentagon;     // pentagon number, starts with 0
   int16_t triangle;        // triangle number, starts with 0
   int16_t next[6];          // each ikosidodecaeder has six neighbour edges
@@ -953,7 +1055,17 @@ struct ge_struct
     if edge is assumed to be part of a triangle then
       next[3] is previous clock wise edge of the triangle
       next[2] is next clock wise edge of the triangle
-      
+    next[1] and next[4] describe the 10-edge ring of the ikosidodecaedron
+      Looping over that ring is a little bit more complicated, because the next
+      position is devinde alternating between next[1] and next[4]
+        pos = gel[pos].next[4];
+        for( i = 1; i < 10; i++ )
+        {
+          if ( (i & 1) != 0 )
+            pos = gel[pos].next[1];
+          else
+            pos = gel[pos].next[4];
+        }
   */
 };
 
@@ -1091,8 +1203,7 @@ void calculateOtherNextGELValues(void)
 
 /*
   check whether pentagon information in GEL is correct.
-  Used during startup to decide whether to go to pentagon learn mode  
-  this will just use next[5] and the pentagon number.
+  Used during startup to check if there is something wrong
 */
 int isGELPentagonCorrect(void)
 {
@@ -1110,8 +1221,8 @@ int isGELPentagonCorrect(void)
 
 /*
   check whether pentagon information in GEL is correct.
-  Used during startup to decide whether to go to pentagon learn mode  
-  this will just use next[5] and the pentagon number.
+  Used during startup to decide whether to stop the startup.
+  This procedure will just use next[5] and the pentagon number.
 */
 int isGELTriangleCorrect(void)
 {
@@ -1233,7 +1344,7 @@ int eolLastPos = 0;
 int eolFindInactive(void)
 {
   int i;
-  pn("eolFindInactive start");
+  //pn("eolFindInactive start");
   
   if ( eolLastPos >= EOL_CNT )
     eolLastPos = 0;
@@ -1248,7 +1359,7 @@ int eolFindInactive(void)
     }
   }
 
-  pn("eolFindInactive middle");
+  //pn("eolFindInactive middle");
 
   for( i = 0; i < eolLastPos; i++ )
   {
@@ -1260,7 +1371,7 @@ int eolFindInactive(void)
     }
   }
   
-  pn("eolFindInactive not found");
+  //pn("eolFindInactive not found");
   return -1;
 }
 
@@ -1669,7 +1780,7 @@ void setup(void)
   eolClear();
 
   pn("Hardware Self Test");
-  selfTest();
+  executeKeySelfTest();
 
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(PA1, OUTPUT);
