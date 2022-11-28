@@ -16,6 +16,13 @@
     screen /dev/ttyUSB0  115200 (terminate with "C-a k" or "C-a \")
     minicom -D /dev/ttyUSB0  -b 115200 (terminate with "C-a x", change CR mode: "C-a u", disable HW control flow!)
 
+
+  ToDo:
+    Implement a eoChangeColor function
+      inital color is 0,0,0
+      fade to new color 0,0,0 with tick cnt
+      
+
 */
 
 #include <stdarg.h>
@@ -24,10 +31,20 @@
 /* configuration */
 
 /* As soon as the user select a key, then the corresponding edge will become this color */
+/* if all rgb values are 0, then there will be no automatic key highlightning */
 uint8_t sensor_key_select_color_r = 0;
-uint8_t sensor_key_select_color_g = 200;
+uint8_t sensor_key_select_color_g = 0;
 uint8_t sensor_key_select_color_b = 0;
 
+/* player 1 color */
+uint8_t p1_r = 0;
+uint8_t p1_g = 0;
+uint8_t p1_b = 200;
+
+/* player 1 color */
+uint8_t p2_r = 200;
+uint8_t p2_g = 0;
+uint8_t p2_b = 0;
 
 
 /*================================================*/
@@ -239,12 +256,20 @@ void ws2812_spi_out(uint8_t *data, int cnt)
   been touched by the user. So LEDPlaneMatrixData[0] will give
   immediate feedback to the user, which element has been pressed.
   
+  Current plane usage:
+  
+  LEDPlaneMatrixData[0]         Cursor, not used any more
+  LEDPlaneMatrixData[1]         Edge Objects (eol)
+  LEDPlaneMatrixData[2]         Edge Objects (eol)
+  LEDPlaneMatrixData[4]         Fixed Colors
+  
+  
 */
 
 /* number of LEDs per plane */
 #define LED_CNT 64
 /* number of planes. RGB value of each plane are added and sent to the target */
-#define LED_PLANE_CNT 3
+#define LED_PLANE_CNT 4
 
 uint8_t LEDMatrixData[LED_CNT*3];
 uint8_t LEDPlaneMatrixData[LED_PLANE_CNT][LED_CNT*3];
@@ -349,6 +374,12 @@ void clearAllPlanes(void)
     clearPlane(plane);
 }
 
+void clearAllPlanesExceptZero(void)
+{
+  int plane;
+  for( plane = 1; plane < LED_PLANE_CNT; plane++ )
+    clearPlane(plane);
+}
 
 /*
   void setPlaneRGB(unsigned plane, uint8_t pos, uint8_t r, uint8_t g, uint8_t b)
@@ -1237,8 +1268,189 @@ int isGELTriangleCorrect(void)
   return 1;     /* triangle information is correct in GEL */
 }
 
+/*================================================*/
+/*
+  geco (GEL Color)
+  
+  This is an addon for the GE-List.
+  There is one geco object for each graph element in GEL
+  geco elements will use plane 3
+    
+*/
+#define GECO_PLANE 3
+
+struct _geco_struct
+{
+
+  /* current color */
+  uint8_t r;    /* red */
+  uint8_t g;    /* green */
+  uint8_t b;    /* blue */
+  
+  /* transition colors */
+  uint8_t sr;    /* start red */
+  uint8_t sg;    /* start green */
+  uint8_t sb;    /* start blue */
+
+  uint8_t er;    /* end red */
+  uint8_t eg;    /* end green */
+  uint8_t eb;    /* end blue */
+  
+  uint16_t trans_total_time;
+  uint16_t trans_current_time;
+
+  /* blink */
+  
+  uint8_t ur;    /* upper red */
+  uint8_t ug;    /* upper green */
+  uint8_t ub;    /* upper blue */
+
+  uint8_t lr;    /* upper red */
+  uint8_t lg;    /* upper green */
+  uint8_t lb;    /* upper blue */
+  
+  /* fade up and down time, blink is disabled if both are 0 */
+  uint16_t to_upper_blink_time;          /* total period time of the blink is to_upper_blink_time+to_lower_blink_time */
+  uint16_t to_lower_blink_time;          /* total period time of the blink is to_upper_blink_time+to_lower_blink_time */
+  
+  /* additional information */
+  uint16_t player;      /* set by / belongs to player */
+};
+typedef struct _geco_struct geco_struct;
+
+geco_struct gecol[60];
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/* calculate any color transition and assign the color to the GECO_PLANE */
+void gecolCalculateTransition(int pos)
+{
+  geco_struct *geco = &(gecol[pos]);
+  if (  geco->trans_current_time >= geco->trans_total_time )
+  {
+    /* end is reached */
+    geco->r = geco->er;
+    geco->g = geco->eg;
+    geco->b = geco->eb;
+  }
+  else
+  {
+    geco->r = ((uint32_t)geco->sr*(geco->trans_total_time - geco->trans_current_time))/geco->trans_total_time 
+                  + ((uint32_t)geco->er*geco->trans_current_time)/geco->trans_total_time;
+    geco->g = ((uint32_t)geco->sg*(geco->trans_total_time - geco->trans_current_time))/geco->trans_total_time 
+                  + ((uint32_t)geco->eg*geco->trans_current_time)/geco->trans_total_time;
+    geco->b = ((uint32_t)geco->sb*(geco->trans_total_time - geco->trans_current_time))/geco->trans_total_time 
+                  + ((uint32_t)geco->eb*geco->trans_current_time)/geco->trans_total_time;
+  }
+
+  setPlaneRGB(GECO_PLANE, gel[pos].led, geco->r, geco->g, geco->b);
+}
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*
+  called by gecolStep()
+*/
+void gecolDoTransitionStep(int pos)
+{
+  geco_struct *geco = &(gecol[pos]);
+  if (  geco->trans_current_time < geco->trans_total_time )
+    geco->trans_current_time++;
+  gecolCalculateTransition(pos); 
+}
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/* 
+    Assign a target color. This color is not assigned immediatly, but it instead faded from the existing color to the new color
+    pos:        gel index
+    time:       number of ticks for the transition
+
+    This procedure is also called by the blink procesures
+*/  
+void gecolSetColor(int pos, uint16_t time, uint8_t r, uint8_t g, uint8_t b)
+{
+  geco_struct *geco = &(gecol[pos]);
+  geco->sr = geco->r;
+  geco->sg = geco->g;
+  geco->sb = geco->b;
+  geco->er = r;
+  geco->eg = g;
+  geco->eb = b;
+  geco->trans_current_time = 0;
+  geco->trans_total_time = time;  
+}
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*
+  called by gecolStep()
+*/
+void gecolDoBlinkStep(int pos)
+{
+  geco_struct *geco = &(gecol[pos]);
+  if ( geco->to_lower_blink_time == 0 && geco->to_upper_blink_time == 0 )
+    return;
+  
+  if ( geco->r == geco->ur && geco->g == geco->ug  && geco->b == geco->ub )
+  {
+    gecolSetColor(pos, geco->to_lower_blink_time, geco->lr, geco->lg, geco->lb );
+  }
+  else if ( geco->r == geco->lr && geco->g == geco->lg  && geco->b == geco->lb )
+  {
+    gecolSetColor(pos, geco->to_upper_blink_time, geco->ur, geco->ug, geco->ub );
+  }
+}
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*
+  let an edge blink with given color and speed until gecolStopBlink() is called
+*/
+void gecolSetBlink(int pos, uint16_t fade_up, uint16_t fade_down, uint8_t ur, uint8_t ug, uint8_t ub, uint8_t lr, uint8_t lg, uint8_t lb )
+{
+  geco_struct *geco = &(gecol[pos]);
+  
+  geco->ur = ur;
+  geco->ug = ug;
+  geco->ub = ub;
+  geco->lr = lr;
+  geco->lg = lg;
+  geco->lb = lb;
+  
+  geco->to_upper_blink_time = fade_up;
+  geco->to_lower_blink_time = fade_down;  
+
+  gecolSetColor(pos, geco->to_upper_blink_time, geco->ur, geco->ug, geco->ub );
+}
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*
+  stop linking after gecolSetBlink has been called
+*/
+void gecolStopBlink(int pos)
+{
+  geco_struct *geco = &(gecol[pos]);
+  geco->to_upper_blink_time = 0;
+  geco->to_lower_blink_time = 0;  
+  gecolSetColor(pos, geco->to_upper_blink_time, geco->ur, geco->ug, geco->ub );
+}
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*
+  update all gecol objects 
+  
+  needs to be called during main loop
+*/
+void gecolStep(void)
+{
+  int i;
+  for( i = 0; i < 60; i++ )
+  {
+    gecolDoTransitionStep(i);
+    gecolDoBlinkStep(i);
+  }
+}
+
+
 
 /*================================================*/
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 /*
   EOL = Edge Object List
 */
@@ -1282,11 +1494,14 @@ struct _eo_struct
     0: Object not active and can be reused
     any other value: A count value, which might be reduced by the cb
     Assigning 0 to this value will do a self destruction of the object
+    
+    During create, the acnt value will be assigned to eo->acnt and eo->initial_acnt.
+    The callback function should only modify acnt and should treat initial_acnt as read only.
   */
   uint16_t acnt;
-  uint16_t initial_acnt;
+  uint16_t initial_acnt;  /* read only for the callback function */
   
-  /* optional argument */
+  /* optional argument, used as intensity value sometimes */
   uint16_t oarg; 
   
   /* internal variable */
@@ -1309,6 +1524,7 @@ struct _eo_struct
 
 eo_struct eol[EOL_CNT];
 
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 int eoDefaultCB(struct _eo_struct *eo, unsigned msg, unsigned arg)
 {
   pn("eoDefaultCB called msg=%d", msg);
@@ -1328,7 +1544,19 @@ int eoDefaultCB(struct _eo_struct *eo, unsigned msg, unsigned arg)
   return 0;
 }
 
-
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*
+  Prototype:
+    void eolClear(void)
+  Description:
+    Clear all edge objects in the edge object list (EOL).
+    This will be called during init only.
+    No callback functions are called
+  Args:
+    -
+  Returns:
+    -
+*/
 void eolClear(void)
 {
   int i;
@@ -1339,8 +1567,22 @@ void eolClear(void)
   }
 }
 
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*
+  Prototype:
+    int eolFindInactive(void)
+  Description:
+    Find an unused edge object within the edge object list (EOL).
+    Returns an index into the global array eol[].
+  Args:
+    -
+  Returns:
+    -1 if no unused object is available otherwise the index of the unused object.
+  Note:
+    Probably, it is better to use 'eolGetInactive()'. 
+    However in most cases just use 'eolCreate()', which will call 'eolGetInactive()', which in turn will call this function.
+*/
 int eolLastPos = 0;
-
 int eolFindInactive(void)
 {
   int i;
@@ -1375,6 +1617,26 @@ int eolFindInactive(void)
   return -1;
 }
 
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*
+  Prototype:
+    int eolSendMsg(int epos, unsigned msg, unsigned arg)
+  Description:
+    Send 'msg' to edge object 'epos' with argument 'arg'
+  Args:
+    epos:       Index into global edge object list eol[]
+    msg:        Message sent to the edge object
+      EO_MSG_NONE 0
+      EO_MSG_INIT 1
+      EO_MSG_CLOSE 2
+      EO_MSG_DRAW 3
+      EO_MSG_SELECT 4
+      EO_MSG_TICK 5
+    arg:        Optional argument, meaning defined by the message
+  Returns:
+    0 if epos is illegal or the referenced edge object is inactive.
+    Otherwise the the return value of the callback function is returned (where again 0 means, that the msg is not handled)
+*/
 int eolSendMsg(int epos, unsigned msg, unsigned arg)
 {
   if ( epos < 0 )
@@ -1386,6 +1648,20 @@ int eolSendMsg(int epos, unsigned msg, unsigned arg)
   return eol[epos].cb(eol+epos, msg, arg);
 }
 
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*
+  Prototype:
+    void eolSendCloseMsg(int epos)
+  Description:
+    Send 'EO_MSG_CLOSE' to edge object 'epos'. The edge object will be deactivated and
+    the callback function will be set to the default function.
+    A callback function should never call this procedure inside the code which handles EO_MSG_CLOSE.
+    While handling E_MSG_TICK, just set 'acnt' to 0. EO_MSG_CLOSE will be automatically called as soon as acnt is set to 0
+  Args:
+    epos:       Index into global edge object list eol[]
+  Returns:
+    -
+*/
 void eolSendCloseMsg(int epos)
 {
   if ( epos < 0 )
@@ -1398,6 +1674,25 @@ void eolSendCloseMsg(int epos)
   eol[epos].cb = eoDefaultCB;
 }
 
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*
+  Prototype:
+    int eolSendAllMsg(unsigned msg, unsigned arg)
+  Description:
+    Similar to 'eolSendMsg()' but will sent the message to all active edge objects.
+    Additionally: If, after sending the message, acnt becomes 0, then the close message is sent.
+  Args:
+    msg:        Message sent to the edge object
+      EO_MSG_NONE 0
+      EO_MSG_INIT 1
+      EO_MSG_CLOSE 2
+      EO_MSG_DRAW 3
+      EO_MSG_SELECT 4
+      EO_MSG_TICK 5
+    arg:        Optional argument, meaning defined by the message
+  Returns:
+    The number of edge objects which got called.
+*/
 int eolSendAllMsg(unsigned msg, unsigned arg)
 {
   int i, cnt = 0;
@@ -1414,19 +1709,50 @@ int eolSendAllMsg(unsigned msg, unsigned arg)
   return cnt;
 }
 
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*
+  Prototype:
+    int eolSendAllDraw(void)
+  Description:
+    Send EO_MSG_DRAW to all active edge objects.
+  Args:
+    -
+  Returns:
+    The number of edge objects which got called.
+*/
 int eolSendAllDraw(void)
 {
   return eolSendAllMsg(EO_MSG_DRAW, 0);
 }
 
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*
+  Prototype:
+    int eolSendAllTick(void)
+  Description:
+    Send EO_MSG_TICK to all active edge objects.
+  Args:
+    -
+  Returns:
+    The number of edge objects which got called.
+*/
 int eolSendAllTick(void)
 {
   return eolSendAllMsg(EO_MSG_TICK, 0);
 }
 
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 /*
-  forcefully get an inactive eo
-  same as eolFindInactive() but will make an active object inactive
+  Prototype:
+    int eolFindInactive(void)
+  Description:
+    Forcefully get an inactive edge object.
+    Same as eolFindInactive() but will make an active object inactive.
+    Returns an index into the global array eol[].
+  Args:
+    -
+  Returns:
+    The index of the unused object.
 */
 int eolGetInactive(void)
 {
@@ -1441,6 +1767,18 @@ int eolGetInactive(void)
   return eolLastPos;
 }
 
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*
+  Prototype:
+    int eolFindByGELPos(uint16_t gpos)
+  Description:
+    Search for an edge object with the given gel index.
+    Returns an index into the global array eol[].
+  Args:
+    gpos:       Index into global gel[] array.
+  Returns:
+    -1, of no such edge object was found, otherwise an index into the global array eol[].
+*/
 int eolFindByGELPos(uint16_t gpos)
 {
   int i;
@@ -1456,6 +1794,23 @@ int eolFindByGELPos(uint16_t gpos)
 
 
 
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/*
+  Prototype:
+    int eolCreate(eo_cb cb, uint16_t acnt, uint16_t oarg, uint16_t gpos, uint8_t plane, uint8_t r, uint8_t g, uint8_t b)
+  Description:
+    Create a new edge object and return the index number of the newly created edge object.
+    This function can not fail, always a new object is returned.
+  Args:
+    cb:         Callback function
+    acnt:       Active count. Must be > 1 (0 will be automatically changed to 1)
+    oarg        Optional argument (sometimes used as intensity)
+    gpos:       Index into global gel[] array: The reference edge for this edge object.
+    plane:      The plane into which this object will be rendered
+    r,g,b:      Color of the edge object.
+  Returns:
+    index into the global array eol[].
+*/
 int eolCreate(eo_cb cb, uint16_t acnt, uint16_t oarg, uint16_t gpos, uint8_t plane, uint8_t r, uint8_t g, uint8_t b)
 {
   int epos = eolGetInactive();
@@ -1475,6 +1830,8 @@ int eolCreate(eo_cb cb, uint16_t acnt, uint16_t oarg, uint16_t gpos, uint8_t pla
   eolSendMsg(epos, EO_MSG_INIT, 0);
   return epos;
 }
+
+/*================================================*/
 
 /* intensity: 0...256 */
 void eoDrawRGB(struct _eo_struct *eo, unsigned intensity)
@@ -1503,21 +1860,21 @@ void eoDrawGELRGB(struct _eo_struct *eo, unsigned gpos, unsigned intensity)
 
   for w=10, r = 20
   x=0 --> 255
-  x=10 --> 255
-  x=245 --> 255
+  x=5 --> 255
+  x=240 --> 255
   x=255 --> 255
-     (upper part of the trapezoid is between 255-w .. 255 and 0 .. w)
+     (upper part of the trapezoid is between 255-w/2 .. 255 and 0 .. w/2)
   x=20 --> around 128
   x=31 --> 0
-    The rising ramp is from 255-w-r to 255-r 
-    The falling ramp is from w to w+r
+    The rising ramp is from 255-w/2-r to 255-r 
+    The falling ramp is from w/2 to w/2+r
     
   Probably it is more a bathtub function
-    0..w        high
-    w..w+r    falling
-    w+r .. 255-w-r  zero
-    255-w-r..255-w rising
-    255-w .. 255 high
+    0..w/2        high
+    w/2..w/2+r    falling
+    w/2+r .. 255-w/2-r  zero
+    255-w/2-r..255-w/2 rising
+    255-w/2 .. 255 high
 */
 uint8_t trapezoid_fn(uint8_t x, uint8_t w, uint8_t r)
 {
@@ -1571,6 +1928,47 @@ void eoDrawTrapezoidPentagon(struct _eo_struct *eo, uint8_t master_brightness, u
   }
 }
 
+void eoDrawTrapezoidRing(struct _eo_struct *eo, uint8_t master_brightness, uint8_t offset, uint8_t w, uint8_t r)
+{
+  unsigned i;
+  uint8_t x, y;
+  unsigned pos = eo->gpos;
+  
+  for( i = 0; i < 10; i++ )
+  {
+    x = ( i * 256 ) / 10 + offset;
+    y = trapezoid_fn(x, w, r);
+    y = ((unsigned)y * (unsigned)master_brightness ) / (unsigned)255;
+    eoDrawGELRGB(eo, pos, y);
+    
+    /* looping over the outer ring requires alternating use of next[1] and next[4] */
+    if ( (i & 1) != 0 )
+      pos = gel[pos].next[1];
+    else
+      pos = gel[pos].next[4];
+  }
+}
+
+void eoDrawTrapezoidInvRing(struct _eo_struct *eo, uint8_t master_brightness, uint8_t offset, uint8_t w, uint8_t r)
+{
+  unsigned i;
+  uint8_t x, y;
+  unsigned pos = eo->gpos;
+  
+  for( i = 0; i < 10; i++ )
+  {
+    x = ( i * 256 ) / 10 + offset;
+    y = trapezoid_fn(x, w, r);
+    y = ((unsigned)y * (unsigned)master_brightness ) / (unsigned)255;
+    eoDrawGELRGB(eo, pos, y);
+    
+    /* looping over the outer ring requires alternating use of next[1] and next[4] */
+    if ( (i & 1) == 0 )
+      pos = gel[pos].next[1];
+    else
+      pos = gel[pos].next[4];
+  }
+}
 
 /*================================================*/
 
@@ -1638,9 +2036,12 @@ int eoEdgeBlinkCB(struct _eo_struct *eo, unsigned msg, unsigned arg)
   gpos: used
   plane, r, g, b: used
   
-  eolCreate(eoEdgeBlinkCB, 1, 200, gpos, 1, 200, 200, 200)
+  int eolCreate(eo_cb cb, uint16_t acnt, uint16_t oarg, uint16_t gpos, uint8_t plane, uint8_t r, uint8_t g, uint8_t b)
+  
+  eolCreate(eoRotatingPentagonCB, 1500, 1500, pos, 2, 200, 0, 200);
 
 */
+
 int eoRotatingPentagonCB(struct _eo_struct *eo, unsigned msg, unsigned arg)
 {
   const uint16_t period_in_ticks = 300;
@@ -1677,74 +2078,244 @@ int eoRotatingPentagonCB(struct _eo_struct *eo, unsigned msg, unsigned arg)
 }
 
 
+/*
+    eolCreate(eoRotatingRingCB, 1500, 0, pos, 2, 200, 0, 200);
+*/
+
+int eoRotatingRingCB(struct _eo_struct *eo, unsigned msg, unsigned arg)
+{
+  const uint16_t period_in_ticks = 400;
+  uint8_t intensity = 0;
+  switch(msg)
+  {
+    case EO_MSG_DRAW:
+      intensity = 255; 
+        
+      if ( eo->acnt != 0x0ffff )
+        intensity = ((uint32_t)intensity*(uint32_t)eo->acnt)/(uint32_t)eo->initial_acnt;
+      if ( intensity > 255 )
+        intensity = 255;
+
+      eoDrawTrapezoidRing(eo, intensity, (eo->i*255)/period_in_ticks, 255/9, 255/7);
+
+      return 1;
+    case EO_MSG_TICK:
+      eo->i++;
+      if ( eo->i >= period_in_ticks )
+        eo->i = 0;
+      if ( eo->acnt != 0x0ffff && eo->acnt > 0)
+        eo->acnt--;
+      return 1;
+    case EO_MSG_SELECT:
+      return 1;
+    case EO_MSG_INIT:
+      return 1;
+    case EO_MSG_CLOSE:
+      eoDrawRGB(eo, 0);
+      return 1;
+  }
+  return 0;
+}
+
+int eoInvRotatingRingCB(struct _eo_struct *eo, unsigned msg, unsigned arg)
+{
+  const uint16_t period_in_ticks = 400;
+  uint8_t intensity = 0;
+  switch(msg)
+  {
+    case EO_MSG_DRAW:
+      intensity = 255; 
+        
+      if ( eo->acnt != 0x0ffff )
+        intensity = ((uint32_t)intensity*(uint32_t)eo->acnt)/(uint32_t)eo->initial_acnt;
+      if ( intensity > 255 )
+        intensity = 255;
+
+      eoDrawTrapezoidInvRing(eo, intensity, (eo->i*255)/period_in_ticks, 255/9, 255/7);
+
+      return 1;
+    case EO_MSG_TICK:
+      eo->i++;
+      if ( eo->i >= period_in_ticks )
+        eo->i = 0;
+      if ( eo->acnt != 0x0ffff && eo->acnt > 0)
+        eo->acnt--;
+      return 1;
+    case EO_MSG_SELECT:
+      return 1;
+    case EO_MSG_INIT:
+      return 1;
+    case EO_MSG_CLOSE:
+      eoDrawRGB(eo, 0);
+      return 1;
+  }
+  return 0;
+}
+
+/*================================================*/
+
+/* 
+  lpg longest path game 
+  
+  player number:
+    0: not a player
+    1: Player 1
+    2: Player 2
+    
+  Ring animation always shows the current player color
+  Fast white blink: Illegal move
+  Slow player color blink: valid move
+  
+*/
+
+void lpgDoPlayerRingAnimation(int pos, uint16_t player)
+{
+  if ( player == 1 )
+  {
+    eolCreate(eoRotatingRingCB, 200, 0, pos, 1, p1_r, p1_g, p1_b);
+    eolCreate(eoInvRotatingRingCB, 200, 0, pos, 2, p1_r, p1_g, p1_b);
+  }
+  else if ( player == 2 )
+  {
+    eolCreate(eoRotatingRingCB, 200, 0, pos, 1, p2_r, p2_g, p2_b);
+    eolCreate(eoInvRotatingRingCB, 200, 0, pos, 2, p2_r, p2_g, p2_b);
+  }
+}
+
+void lpgSetPlayerColor(int pos, uint16_t player)
+{
+  uint16_t fade_time = 100;
+  if ( player == 1 )
+  {
+    gecolSetColor(pos, fade_time, p1_r, p1_g, p1_b);
+  }
+  else if ( player == 2 )
+  {
+    gecolSetColor(pos, fade_time, p2_r, p2_g, p2_b);
+  }
+  else
+  {
+    gecolSetColor(pos, fade_time, 0, 0, 0);                /* no player */
+  }
+}
+
+void lpgSetPlayerValidBlink(int pos, uint16_t player)
+{
+  lpgDoPlayerRingAnimation(pos, player);       /* show current player ring animation */
+  if ( player == 1 )
+    gecolSetBlink(pos, 70, 70, p1_r, p1_g, p1_b, 0,0,0 );
+  else
+    gecolSetBlink(pos, 70, 70, p2_r, p2_g, p2_b, 0,0,0 );
+}
+
+void lpgSetPlayerInvalidBlink(int pos, uint16_t player)
+{
+  lpgDoPlayerRingAnimation(pos, player);       /* show current player ring animation */
+  if ( player != 1 )
+    gecolSetBlink(pos, 20, 20, 200,200,200, 0,0,0);
+  else
+    gecolSetBlink(pos, 20, 20, 200,200,200, 0,0,0);
+}
+
+int lpgIsValidPlayerPosition(int pos, uint16_t player)
+{
+  if ( gecol[pos].player == 0 )
+    return 1;
+  return 0;
+}
+
+void lpgSetPlayerBlink(int pos, uint16_t player)
+{
+  if ( lpgIsValidPlayerPosition(pos, player) )
+    lpgSetPlayerValidBlink(pos, player);
+  else
+    lpgSetPlayerInvalidBlink(pos, player);
+}
+
+/*
+  returns 1 if the player was valid at the position 
+*/
+int lpgStopPlayerBlink(int pos, uint16_t player)
+{
+  lpgDoPlayerRingAnimation(pos, player);       /* show current player ring animation */
+  gecolStopBlink(pos); 
+  if ( lpgIsValidPlayerPosition(pos, player) )
+  {
+    gecol[pos].player = player;
+    lpgSetPlayerColor(pos, player);
+    return 1;
+  }
+  
+  /* restore original player color */
+  lpgSetPlayerColor(pos, gecol[pos].player);  
+  return 0;
+}
+
+
+
 /*================================================*/
 
 int masterModeGELShow(void)
 {
   static int state = 0;
+  static int last_key = current_key;
+  static uint16_t current_player = 0;
+  
+  uint16_t pos = 0;
 
   switch(state)
   {
     case 0:
       state = 1;
+      last_key = -1;
+      current_player = 1;
       clearAllPlanes();
       break;
     case 1:
       if ( current_key >= 0 )
       {
         pn("GEL Show %s", getKeyInfoString(current_key));
-        uint16_t pos;
         uint16_t i;
+
+        pos = getGELPosByKey(current_key);
         
-        pos = getGELPosByKey(current_key);
-        for( i = 0; i < 5; i++ )
-        {
-          if ( i == 1 )
-            setPlaneRGB(1, gel[pos].led, 0,30, 30);  
-          else
-            setPlaneRGB(1, gel[pos].led, 0, 0, 30);  
-          pos = gel[pos].next[0];
-        }
-
-        pos = getGELPosByKey(current_key);
-        pos = gel[pos].next[3];
-        for( i = 1; i < 3; i++ )
-        {
-          if ( i == 1 )
-            setPlaneRGB(1, gel[pos].led, 0,30, 30);  
-          else
-            setPlaneRGB(1, gel[pos].led, 0, 0, 30);  
-          pos = gel[pos].next[3];
-        }
-
-        pos = getGELPosByKey(current_key);
-        pos = gel[pos].next[4];
-        for( i = 1; i < 10; i++ )
-        {
-          if ( i == 1 )
-            setPlaneRGB(1, gel[pos].led, 30,30, 0);  
-          else
-            setPlaneRGB(1, gel[pos].led, 30, 0, 0);  
-          /* looping over the outer ring requires alternating use of next[1] and next[4] */
-          if ( (i & 1) != 0 )
-            pos = gel[pos].next[1];
-          else
-            pos = gel[pos].next[4];
-        }
-        pos = getGELPosByKey(current_key);
-        eolSendCloseMsg(eolFindByGELPos(pos));
+        // eolSendCloseMsg(eolFindByGELPos(pos));        
         //eolCreate(eoEdgeBlinkCB, 0xffff, 1500, pos, 2, 200, 200, 200);
-        eolCreate(eoRotatingPentagonCB, 1500, 1500, pos, 2, 200, 0, 200);
+        //eolCreate(eoRotatingPentagonCB, 1500, 1500, pos, 2, 200, 0, 200);
         
+        
+        lpgSetPlayerBlink( pos,  current_player );
+
+        last_key = current_key;
         state = 2;
+        pn("key %d start", current_key);
       }
       break;
     case 2:
+      if ( last_key>= 0 && last_key != current_key )
+      {
+        pos = getGELPosByKey(last_key);
+        pn("key %d end", last_key);
+        if ( lpgStopPlayerBlink(pos, current_player) )
+        {
+          if ( current_player == 1 )
+            current_player = 2;
+          else
+            current_player = 1;
+        }
+        
+        state = 1;
+        last_key = -1;
+      }
+      break;
+    case 3:
+      /*
       if ( current_key < 0 )
       {
         clearAllPlanes();
         state = 1;
       }
+      */
       break;
   }
   return 0;
@@ -1826,8 +2397,10 @@ void loop()
 
 
   updateTouchKeys();
+  clearAllPlanesExceptZero();
   eolSendAllDraw();
   eolSendAllTick();
+  gecolStep();
   sendAllPlanes();
 
   switch(master_mode)
