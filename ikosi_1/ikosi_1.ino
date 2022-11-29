@@ -1315,10 +1315,12 @@ struct _geco_struct
   
   /* additional information */
   uint16_t player;      /* set by / belongs to player */
+  uint16_t is_visited;  /* used by DFS algorithms */
 };
 typedef struct _geco_struct geco_struct;
 
 geco_struct gecol[60];
+
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 /* calculate any color transition and assign the color to the GECO_PLANE */
@@ -1527,7 +1529,7 @@ eo_struct eol[EOL_CNT];
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 int eoDefaultCB(struct _eo_struct *eo, unsigned msg, unsigned arg)
 {
-  pn("eoDefaultCB called msg=%d", msg);
+  //pn("eoDefaultCB called msg=%d", msg);
   switch(msg)
   {
     case EO_MSG_DRAW:
@@ -1596,7 +1598,7 @@ int eolFindInactive(void)
     if ( eol[i].acnt == 0 )
     {
       eolLastPos = i;
-      pn("eolFindInactive found1 = %d", i);
+      //pn("eolFindInactive found1 = %d", i);
       return i;
     }
   }
@@ -1608,7 +1610,7 @@ int eolFindInactive(void)
     if ( eol[i].acnt == 0 )
     {
       eolLastPos = i;
-      pn("eolFindInactive found2 = %d", i);
+      //pn("eolFindInactive found2 = %d", i);
       return i;
     }
   }
@@ -1757,7 +1759,7 @@ int eolSendAllTick(void)
 int eolGetInactive(void)
 {
   int epos = eolFindInactive();
-  pn("eolGetInactive epos=%d", epos);
+  //pn("eolGetInactive epos=%d", epos);
   if ( epos >= 0 )
     return epos;
   eolLastPos++;
@@ -1826,7 +1828,7 @@ int eolCreate(eo_cb cb, uint16_t acnt, uint16_t oarg, uint16_t gpos, uint8_t pla
   eol[epos].g = g;
   eol[epos].b =b;
   eol[epos].i = 0;
-  pn("eolCreate epos=%d eol[epos].acnt=%d", epos, eol[epos].acnt);
+  //pn("eolCreate epos=%d eol[epos].acnt=%d", epos, eol[epos].acnt);
   eolSendMsg(epos, EO_MSG_INIT, 0);
   return epos;
 }
@@ -2165,8 +2167,124 @@ int eoInvRotatingRingCB(struct _eo_struct *eo, unsigned msg, unsigned arg)
   Ring animation always shows the current player color
   Fast white blink: Illegal move
   Slow player color blink: valid move
-  
+
+  elements of the gel[] array:
+  struct ge_struct
+  {
+    int16_t led;               // led number, LED can be derived via key_to_LED_map[key]
+    int16_t key;              // index into touch_status_list[] 
+    int16_t pentagon;     // pentagon number, starts with 0
+    int16_t triangle;        // triangle number, starts with 0
+    int16_t next[6];          // each ikosidodecaeder has six neighbour edges
+  }
+
+  elements of the gecol[] array:
+  struct _geco_struct
+  {
+    ...
+    uint16_t player;      // set by / belongs to player, 0=not owned, 1:player1, 2:player2
+    uint16_t is_visited;
+  };
+
+
 */
+
+int lpg_half_move_count = 0;
+int lpg_max_depth = 0;  /* used by the longest path calculation */
+uint8_t lpg_bfs_queue_list[60];
+int lpg_bfs_queue_size = 0;
+
+void lpgClearVisited(void)
+{
+  int i;
+  for( i = 0; i < 60; i++ )
+    gecol[i].is_visited = 0;
+}
+
+void lpgGetLongestPathDFSByPos(int pos, uint16_t player, int depth)
+{
+  int i;
+  if ( gecol[pos].is_visited != 0 )
+    return;
+  if ( gecol[pos].player != player )
+    return;
+  depth++;
+  gecol[pos].is_visited = 1;
+  
+  if ( lpg_max_depth  < depth )
+    lpg_max_depth = depth;
+    
+  if ( depth > 30 )       /* mathematical question: what can be the maximum size of the longest path??? */
+    return;
+  
+  for( i = 0; i < 6; i++ )
+    lpgGetLongestPathDFSByPos( gel[pos].next[i], player, depth);
+}
+
+int lpgGetLongestPathBFSByPos(int pos, uint16_t player)
+{
+  int i;
+  int next;
+  int longest_path_size = 0;
+  
+  if ( gecol[pos].player != player )    /* extra check: return 0 if player is not owner of root edge */
+    return 0;
+
+  lpgClearVisited();
+
+  gecol[pos].is_visited = 1;            /* mark root as visited */
+  lpg_bfs_queue_size = 0;              /* clear the BFS queue */
+  lpg_bfs_queue_list[lpg_bfs_queue_size++] = pos;        /* add root to the queue */
+
+  while( lpg_bfs_queue_size > 0 )
+  {
+    longest_path_size++;
+    pos = lpg_bfs_queue_list[--lpg_bfs_queue_size];
+    for( i = 0; i < 6; i++ )      
+    {
+      next = gel[pos].next[i];
+      if ( gecol[next].player == player )
+      {
+        if ( gecol[next].is_visited == 0 )
+        {
+          gecol[next].is_visited = 1;
+          lpg_bfs_queue_list[lpg_bfs_queue_size++] = next;        /* put next edue into the queue */          
+        }
+      }
+    }
+  }
+  return longest_path_size;
+}
+
+
+int lpgGetLongestPathByPos(int pos, uint16_t player)
+{
+  lpg_max_depth = 0;
+  lpgClearVisited();
+  lpgGetLongestPathDFSByPos(pos, player, 0);
+  return lpg_max_depth;         // max depth is also the longest path on the ikosidodecaedron
+}
+
+
+
+int lpgGetLongestPath(uint16_t player)
+{
+  int i;
+  int curr = 0;
+  int max = 0;
+  /*
+    loop over all edges of the given player
+    calculate the longest path for that position and return the maximum longest path
+  */
+  for( i = 0; i < 60; i++ )
+    if ( gecol[i].player == player )
+    {
+      curr = lpgGetLongestPathByPos(i, player);
+      if ( max < curr )
+        max = curr;
+    }
+    return max;
+}
 
 void lpgDoPlayerRingAnimation(int pos, uint16_t player)
 {
@@ -2219,9 +2337,23 @@ void lpgSetPlayerInvalidBlink(int pos, uint16_t player)
 
 int lpgIsValidPlayerPosition(int pos, uint16_t player)
 {
-  if ( gecol[pos].player == 0 )
-    return 1;
-  return 0;
+  /* the new position is invalid if it is already occupied */
+  if ( gecol[pos].player != 0 )
+    return 0;
+  
+  /* Move is invalid if there is no nearby edge if the same player. */
+  /* This check does not apply to the first two moves */
+  if ( lpg_half_move_count >= 2 )
+  {
+    int i;
+    for( i = 0; i < 6; i++ )
+      if ( gecol[gel[pos].next[i]].player == player )
+        break;
+    if ( i >= 6 )
+      return 0;         /* no nearby edge fount: invalid */
+  }
+  
+  return 1;
 }
 
 void lpgSetPlayerBlink(int pos, uint16_t player)
@@ -2269,6 +2401,7 @@ int masterModeGELShow(void)
       state = 1;
       last_key = -1;
       current_player = 1;
+      lpg_half_move_count = 0;
       clearAllPlanes();
       break;
     case 1:
@@ -2302,6 +2435,11 @@ int masterModeGELShow(void)
             current_player = 2;
           else
             current_player = 1;
+            
+          lpg_half_move_count++;
+          
+          pn("Longest Path Player 1: %d", lpgGetLongestPath(1) );
+          pn("Longest Path Player 2: %d", lpgGetLongestPath(2) );
         }
         
         state = 1;
