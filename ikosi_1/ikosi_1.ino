@@ -36,15 +36,138 @@ uint8_t sensor_key_select_color_r = 0;
 uint8_t sensor_key_select_color_g = 0;
 uint8_t sensor_key_select_color_b = 0;
 
+/* if a edge is black, then it is replaced with this color */
+uint8_t black_replacement_r = 10;
+uint8_t black_replacement_g = 10;
+uint8_t black_replacement_b = 10;
+
 /* player 1 color */
 uint8_t p1_r = 0;
 uint8_t p1_g = 0;
 uint8_t p1_b = 200;
 
-/* player 1 color */
+/* player 1 correct edge indication color */
+uint8_t p1v_r = 0;
+uint8_t p1v_g = 150;
+uint8_t p1v_b = 200;
+
+/* illegal edge for player 1 */
+uint8_t p1i_r = 0;
+uint8_t p1i_g = 0;
+uint8_t p1i_b = 200;
+
+/* player 2 color */
 uint8_t p2_r = 200;
 uint8_t p2_g = 0;
 uint8_t p2_b = 0;
+
+/* player 2 correct edge indication color */
+uint8_t p2v_r = 200;
+uint8_t p2v_g = 100;
+uint8_t p2v_b = 0;
+
+/* illegal edge for player 2 */
+uint8_t p2i_r = 200;
+uint8_t p2i_g = 0;
+uint8_t p2i_b = 0;
+
+
+/*================================================*/
+/* GEL Array: Graph definitions */
+
+/* graph element struct (actually it is the edge of the ikosidodecaeder */
+struct ge_struct
+{
+  int16_t led;               // led number, LED can be derived via key_to_LED_map[key]
+  int16_t key;              // index into touch_status_list[] 
+  int16_t pentagon;     // pentagon number, starts with 0
+  int16_t triangle;        // triangle number, starts with 0
+  int16_t next[6];          // each ikosidodecaeder has six neighbour edges
+  /*
+    if edge is assumed to be part of a pentagon then
+      next[0] is previous clock wise edge of the pentagon
+      next[5] is next clock wise edge of the pentagon
+    if edge is assumed to be part of a triangle then
+      next[3] is previous clock wise edge of the triangle
+      next[2] is next clock wise edge of the triangle
+    next[1] and next[4] describe the 10-edge ring of the ikosidodecaedron
+      Looping over that ring is a little bit more complicated, because the next
+      position is devinde alternating between next[1] and next[4]
+        pos = gel[pos].next[4];
+        for( i = 1; i < 10; i++ )
+        {
+          if ( (i & 1) != 0 )
+            pos = gel[pos].next[1];
+          else
+            pos = gel[pos].next[4];
+        }
+  */
+};
+
+/* gel is learned by ikosi_learn.ino has to be inserted here */
+struct ge_struct gel[60] = {
+{36,0 /* A2 */,0,0,{-1,-1,53,-1,-1,27}}
+,{51,1 /* A3 */,0,1,{-1,-1,7,-1,-1,0}}
+,{21,2 /* A4 */,1,2,{-1,-1,18,-1,-1,26}}
+,{25,3 /* A5 */,1,3,{-1,-1,34,-1,-1,2}}
+,{20,5 /* A8 */,2,4,{-1,-1,26,-1,-1,44}}
+,{17,6 /* A15 */,3,5,{-1,-1,15,-1,-1,28}}
+,{44,7 /* B0 */,0,6,{-1,-1,41,-1,-1,51}}
+,{59,8 /* B1 */,4,1,{-1,-1,46,-1,-1,59}}
+,{8,9 /* B3 */,5,7,{-1,-1,9,-1,-1,54}}
+,{56,10 /* B5 */,6,7,{-1,-1,50,-1,-1,13}}
+,{58,11 /* B6 */,6,8,{-1,-1,14,-1,-1,12}}
+,{4,12 /* B7 */,6,9,{-1,-1,37,-1,-1,9}}
+,{48,13 /* B8 */,6,10,{-1,-1,49,-1,-1,11}}
+,{7,14 /* B9 */,6,11,{-1,-1,24,-1,-1,10}}
+,{49,15 /* B10 */,4,8,{-1,-1,32,-1,-1,17}}
+,{19,16 /* B11 */,7,5,{-1,-1,43,-1,-1,31}}
+,{63,18 /* B13 */,8,12,{-1,-1,59,-1,-1,22}}
+,{55,19 /* B14 */,4,11,{-1,-1,13,-1,-1,45}}
+,{22,21 /* C0 */,9,2,{-1,-1,23,-1,-1,29}}
+,{41,22 /* C1 */,10,13,{-1,-1,45,-1,-1,36}}
+,{28,23 /* C2 */,2,14,{-1,-1,27,-1,-1,4}}
+,{5,24 /* C3 */,3,15,{-1,-1,48,-1,-1,5}}
+,{46,25 /* C4 */,8,6,{-1,-1,6,-1,-1,57}}
+,{11,26 /* C5 */,3,2,{-1,-1,2,-1,-1,21}}
+,{57,27 /* C6 */,5,11,{-1,-1,17,-1,-1,8}}
+,{31,28 /* C7 */,2,16,{-1,-1,55,-1,-1,41}}
+,{12,29 /* C8 */,1,4,{-1,-1,56,-1,-1,38}}
+,{27,30 /* C9 */,0,14,{-1,-1,38,-1,-1,6}}
+,{14,31 /* C10 */,3,17,{-1,-1,40,-1,-1,56}}
+,{24,32 /* C11 */,9,3,{-1,-1,3,-1,-1,47}}
+,{38,33 /* C12 */,1,0,{-1,-1,0,-1,-1,3}}
+,{2,34 /* C13 */,7,15,{-1,-1,21,-1,-1,42}}
+,{62,35 /* D0 */,8,8,{-1,-1,10,-1,-1,16}}
+,{32,36 /* D1 */,11,10,{-1,-1,12,-1,-1,55}}
+,{37,37 /* D2 */,10,3,{-1,-1,29,-1,-1,53}}
+,{40,38 /* D3 */,5,18,{-1,-1,47,-1,-1,58}}
+,{42,39 /* D4 */,10,18,{-1,-1,35,-1,-1,34}}
+,{15,40 /* D5 */,11,9,{-1,-1,52,-1,-1,33}}
+,{26,41 /* D6 */,1,14,{-1,-1,20,-1,-1,30}}
+,{9,42 /* D7 */,9,19,{-1,-1,54,-1,-1,48}}
+,{16,44 /* D9 */,11,17,{-1,-1,44,-1,-1,43}}
+,{45,46 /* D11 */,2,6,{-1,-1,22,-1,-1,20}}
+,{3,47 /* D12 */,7,19,{-1,-1,39,-1,-1,50}}
+,{30,48 /* D13 */,11,5,{-1,-1,5,-1,-1,37}}
+,{0,49 /* D14 */,2,17,{-1,-1,28,-1,-1,25}}
+,{53,50 /* D15 */,4,13,{-1,-1,58,-1,-1,7}}
+,{52,53 /* E2 */,10,1,{-1,-1,1,-1,-1,19}}
+,{39,54 /* E3 */,9,18,{-1,-1,36,-1,-1,39}}
+,{10,55 /* E4 */,9,15,{-1,-1,31,-1,-1,18}}
+,{47,56 /* E5 */,8,10,{-1,-1,33,-1,-1,32}}
+,{6,57 /* E6 */,7,7,{-1,-1,8,-1,-1,52}}
+,{50,58 /* E7 */,0,12,{-1,-1,16,-1,-1,1}}
+,{1,59 /* E8 */,7,9,{-1,-1,11,-1,-1,15}}
+,{43,60 /* E9 */,10,0,{-1,-1,30,-1,-1,46}}
+,{23,61 /* E10 */,5,19,{-1,-1,42,-1,-1,35}}
+,{18,62 /* E11 */,11,16,{-1,-1,57,-1,-1,40}}
+,{13,63 /* E12 */,3,4,{-1,-1,4,-1,-1,23}}
+,{29,64 /* E13 */,8,16,{-1,-1,25,-1,-1,49}}
+,{54,65 /* E14 */,5,13,{-1,-1,19,-1,-1,24}}
+,{60,66 /* E15 */,4,12,{-1,-1,51,-1,-1,14}}
+};
+
 
 
 /*================================================*/
@@ -345,6 +468,20 @@ void sendAllPlanes(void)
       }
     }
   }
+  
+  /* consider only LEDs which are in use */
+  for( int j = 0; j < 60; j++ )
+  {
+    i = gel[j].led*3;
+    /* replace full black by the replacement color */
+    if ( LEDMatrixData[i] == 0 && LEDMatrixData[i+1] == 0 && LEDMatrixData[i+2] == 0 )
+    {
+      LEDMatrixData[i+0] = black_replacement_g;
+      LEDMatrixData[i+1] = black_replacement_r;
+      LEDMatrixData[i+2] = black_replacement_b;
+    }
+  }
+  
   sendLEDMatrix();
 }
 
@@ -1069,101 +1206,6 @@ void updateTouchKeys(void)
 
 
 /*================================================*/
-/* Graph definitions */
-
-/* graph element struct (actually it is the edge of the ikosidodecaeder */
-struct ge_struct
-{
-  int16_t led;               // led number, LED can be derived via key_to_LED_map[key]
-  int16_t key;              // index into touch_status_list[] 
-  int16_t pentagon;     // pentagon number, starts with 0
-  int16_t triangle;        // triangle number, starts with 0
-  int16_t next[6];          // each ikosidodecaeder has six neighbour edges
-  /*
-    if edge is assumed to be part of a pentagon then
-      next[0] is previous clock wise edge of the pentagon
-      next[5] is next clock wise edge of the pentagon
-    if edge is assumed to be part of a triangle then
-      next[3] is previous clock wise edge of the triangle
-      next[2] is next clock wise edge of the triangle
-    next[1] and next[4] describe the 10-edge ring of the ikosidodecaedron
-      Looping over that ring is a little bit more complicated, because the next
-      position is devinde alternating between next[1] and next[4]
-        pos = gel[pos].next[4];
-        for( i = 1; i < 10; i++ )
-        {
-          if ( (i & 1) != 0 )
-            pos = gel[pos].next[1];
-          else
-            pos = gel[pos].next[4];
-        }
-  */
-};
-
-/* gel is learned by ikosi_learn.ino has to be inserted here */
-struct ge_struct gel[60] = {
-{36,0 /* A2 */,0,0,{-1,-1,53,-1,-1,27}}
-,{51,1 /* A3 */,0,1,{-1,-1,7,-1,-1,0}}
-,{21,2 /* A4 */,1,2,{-1,-1,18,-1,-1,26}}
-,{25,3 /* A5 */,1,3,{-1,-1,34,-1,-1,2}}
-,{20,5 /* A8 */,2,4,{-1,-1,26,-1,-1,44}}
-,{17,6 /* A15 */,3,5,{-1,-1,15,-1,-1,28}}
-,{44,7 /* B0 */,0,6,{-1,-1,41,-1,-1,51}}
-,{59,8 /* B1 */,4,1,{-1,-1,46,-1,-1,59}}
-,{8,9 /* B3 */,5,7,{-1,-1,9,-1,-1,54}}
-,{56,10 /* B5 */,6,7,{-1,-1,50,-1,-1,13}}
-,{58,11 /* B6 */,6,8,{-1,-1,14,-1,-1,12}}
-,{4,12 /* B7 */,6,9,{-1,-1,37,-1,-1,9}}
-,{48,13 /* B8 */,6,10,{-1,-1,49,-1,-1,11}}
-,{7,14 /* B9 */,6,11,{-1,-1,24,-1,-1,10}}
-,{49,15 /* B10 */,4,8,{-1,-1,32,-1,-1,17}}
-,{19,16 /* B11 */,7,5,{-1,-1,43,-1,-1,31}}
-,{63,18 /* B13 */,8,12,{-1,-1,59,-1,-1,22}}
-,{55,19 /* B14 */,4,11,{-1,-1,13,-1,-1,45}}
-,{22,21 /* C0 */,9,2,{-1,-1,23,-1,-1,29}}
-,{41,22 /* C1 */,10,13,{-1,-1,45,-1,-1,36}}
-,{28,23 /* C2 */,2,14,{-1,-1,27,-1,-1,4}}
-,{5,24 /* C3 */,3,15,{-1,-1,48,-1,-1,5}}
-,{46,25 /* C4 */,8,6,{-1,-1,6,-1,-1,57}}
-,{11,26 /* C5 */,3,2,{-1,-1,2,-1,-1,21}}
-,{57,27 /* C6 */,5,11,{-1,-1,17,-1,-1,8}}
-,{31,28 /* C7 */,2,16,{-1,-1,55,-1,-1,41}}
-,{12,29 /* C8 */,1,4,{-1,-1,56,-1,-1,38}}
-,{27,30 /* C9 */,0,14,{-1,-1,38,-1,-1,6}}
-,{14,31 /* C10 */,3,17,{-1,-1,40,-1,-1,56}}
-,{24,32 /* C11 */,9,3,{-1,-1,3,-1,-1,47}}
-,{38,33 /* C12 */,1,0,{-1,-1,0,-1,-1,3}}
-,{2,34 /* C13 */,7,15,{-1,-1,21,-1,-1,42}}
-,{62,35 /* D0 */,8,8,{-1,-1,10,-1,-1,16}}
-,{32,36 /* D1 */,11,10,{-1,-1,12,-1,-1,55}}
-,{37,37 /* D2 */,10,3,{-1,-1,29,-1,-1,53}}
-,{40,38 /* D3 */,5,18,{-1,-1,47,-1,-1,58}}
-,{42,39 /* D4 */,10,18,{-1,-1,35,-1,-1,34}}
-,{15,40 /* D5 */,11,9,{-1,-1,52,-1,-1,33}}
-,{26,41 /* D6 */,1,14,{-1,-1,20,-1,-1,30}}
-,{9,42 /* D7 */,9,19,{-1,-1,54,-1,-1,48}}
-,{16,44 /* D9 */,11,17,{-1,-1,44,-1,-1,43}}
-,{45,46 /* D11 */,2,6,{-1,-1,22,-1,-1,20}}
-,{3,47 /* D12 */,7,19,{-1,-1,39,-1,-1,50}}
-,{30,48 /* D13 */,11,5,{-1,-1,5,-1,-1,37}}
-,{0,49 /* D14 */,2,17,{-1,-1,28,-1,-1,25}}
-,{53,50 /* D15 */,4,13,{-1,-1,58,-1,-1,7}}
-,{52,53 /* E2 */,10,1,{-1,-1,1,-1,-1,19}}
-,{39,54 /* E3 */,9,18,{-1,-1,36,-1,-1,39}}
-,{10,55 /* E4 */,9,15,{-1,-1,31,-1,-1,18}}
-,{47,56 /* E5 */,8,10,{-1,-1,33,-1,-1,32}}
-,{6,57 /* E6 */,7,7,{-1,-1,8,-1,-1,52}}
-,{50,58 /* E7 */,0,12,{-1,-1,16,-1,-1,1}}
-,{1,59 /* E8 */,7,9,{-1,-1,11,-1,-1,15}}
-,{43,60 /* E9 */,10,0,{-1,-1,30,-1,-1,46}}
-,{23,61 /* E10 */,5,19,{-1,-1,42,-1,-1,35}}
-,{18,62 /* E11 */,11,16,{-1,-1,57,-1,-1,40}}
-,{13,63 /* E12 */,3,4,{-1,-1,4,-1,-1,23}}
-,{29,64 /* E13 */,8,16,{-1,-1,25,-1,-1,49}}
-,{54,65 /* E14 */,5,13,{-1,-1,19,-1,-1,24}}
-,{60,66 /* E15 */,4,12,{-1,-1,51,-1,-1,14}}
-};
-
 
 uint16_t getGELPosByKey(uint16_t key)
 {
@@ -1979,13 +2021,14 @@ void eoDrawTrapezoidInvRing(struct _eo_struct *eo, uint8_t master_brightness, ui
   oarg: max intensity (<= 256 )
   gpos: used
   plane, r, g, b: used
-  
+
+  int eolCreate(eo_cb cb, uint16_t acnt, uint16_t oarg, uint16_t gpos, uint8_t plane, uint8_t r, uint8_t g, uint8_t b)
   eolCreate(eoEdgeBlinkCB, 1, 200, gpos, 1, 200, 200, 200)
 
 */
 int eoEdgeBlinkCB(struct _eo_struct *eo, unsigned msg, unsigned arg)
 {
-  const uint16_t period_in_ticks = 300;
+  const uint16_t period_in_ticks = 150;
   unsigned intensity = 0;
   switch(msg)
   {
@@ -2190,7 +2233,6 @@ int eoInvRotatingRingCB(struct _eo_struct *eo, unsigned msg, unsigned arg)
 */
 
 int lpg_half_move_count = 0;
-int lpg_max_depth = 0;  /* used by the longest path calculation */
 uint8_t lpg_bfs_queue_list[60];
 int lpg_bfs_queue_size = 0;
 
@@ -2201,31 +2243,13 @@ void lpgClearVisited(void)
     gecol[i].is_visited = 0;
 }
 
-void lpgGetLongestPathDFSByPos(int pos, uint16_t player, int depth)
-{
-  int i;
-  if ( gecol[pos].is_visited != 0 )
-    return;
-  if ( gecol[pos].player != player )
-    return;
-  depth++;
-  gecol[pos].is_visited = 1;
-  
-  if ( lpg_max_depth  < depth )
-    lpg_max_depth = depth;
-    
-  if ( depth > 30 )       /* mathematical question: what can be the maximum size of the longest path??? */
-    return;
-  
-  for( i = 0; i < 6; i++ )
-    lpgGetLongestPathDFSByPos( gel[pos].next[i], player, depth);
-}
 
-int lpgGetLongestPathBFSByPos(int pos, uint16_t player)
+int lpgGetShortestPathSizeToMostDistantEdgeBFSByPos(int pos, uint16_t player)
 {
   int i;
   int next;
-  int longest_path_size = 0;
+  int longest_path_size = 1;
+  int is_one_more_added = 0;
   
   if ( gecol[pos].player != player )    /* extra check: return 0 if player is not owner of root edge */
     return 0;
@@ -2236,10 +2260,10 @@ int lpgGetLongestPathBFSByPos(int pos, uint16_t player)
   lpg_bfs_queue_size = 0;              /* clear the BFS queue */
   lpg_bfs_queue_list[lpg_bfs_queue_size++] = pos;        /* add root to the queue */
 
-  while( lpg_bfs_queue_size > 0 )
+  while( lpg_bfs_queue_size > 0 && longest_path_size < 35 )
   {
-    longest_path_size++;
     pos = lpg_bfs_queue_list[--lpg_bfs_queue_size];
+    is_one_more_added = 0;
     for( i = 0; i < 6; i++ )      
     {
       next = gel[pos].next[i];
@@ -2249,25 +2273,19 @@ int lpgGetLongestPathBFSByPos(int pos, uint16_t player)
         {
           gecol[next].is_visited = 1;
           lpg_bfs_queue_list[lpg_bfs_queue_size++] = next;        /* put next edue into the queue */          
+          is_one_more_added = 1;
         }
       }
     }
+    if ( is_one_more_added )
+      longest_path_size++;      
   }
   return longest_path_size;
 }
 
 
-int lpgGetLongestPathByPos(int pos, uint16_t player)
-{
-  lpg_max_depth = 0;
-  lpgClearVisited();
-  lpgGetLongestPathDFSByPos(pos, player, 0);
-  return lpg_max_depth;         // max depth is also the longest path on the ikosidodecaedron
-}
 
-
-
-int lpgGetLongestPath(uint16_t player)
+int lpgGetLongestShortestPath(uint16_t player)
 {
   int i;
   int curr = 0;
@@ -2279,7 +2297,7 @@ int lpgGetLongestPath(uint16_t player)
   for( i = 0; i < 60; i++ )
     if ( gecol[i].player == player )
     {
-      curr = lpgGetLongestPathByPos(i, player);
+      curr = lpgGetShortestPathSizeToMostDistantEdgeBFSByPos(i, player);
       if ( max < curr )
         max = curr;
     }
@@ -2317,24 +2335,6 @@ void lpgSetPlayerColor(int pos, uint16_t player)
   }
 }
 
-void lpgSetPlayerValidBlink(int pos, uint16_t player)
-{
-  lpgDoPlayerRingAnimation(pos, player);       /* show current player ring animation */
-  if ( player == 1 )
-    gecolSetBlink(pos, 70, 70, p1_r, p1_g, p1_b, 0,0,0 );
-  else
-    gecolSetBlink(pos, 70, 70, p2_r, p2_g, p2_b, 0,0,0 );
-}
-
-void lpgSetPlayerInvalidBlink(int pos, uint16_t player)
-{
-  lpgDoPlayerRingAnimation(pos, player);       /* show current player ring animation */
-  if ( player != 1 )
-    gecolSetBlink(pos, 20, 20, 200,200,200, 0,0,0);
-  else
-    gecolSetBlink(pos, 20, 20, 200,200,200, 0,0,0);
-}
-
 int lpgIsValidPlayerPosition(int pos, uint16_t player)
 {
   /* the new position is invalid if it is already occupied */
@@ -2356,6 +2356,61 @@ int lpgIsValidPlayerPosition(int pos, uint16_t player)
   return 1;
 }
 
+
+void lpgSetPlayerValidBlink(int pos, uint16_t player)
+{
+  lpgDoPlayerRingAnimation(pos, player);       /* show current player ring animation */
+  if ( player == 1 )
+    gecolSetBlink(pos, 70, 70, p1_r, p1_g, p1_b, 0,0,0 );
+  else
+    gecolSetBlink(pos, 70, 70, p2_r, p2_g, p2_b, 0,0,0 );
+}
+
+void lpgSetPlayerInvalidBlink(int pos, uint16_t player)
+{
+  int i;
+  uint8_t r, g, b;
+  if ( player == 1 )
+  {
+    r = p1v_r;
+    g = p1v_g;
+    b = p1v_b;
+  }
+  else
+  {
+    r = p2v_r;
+    g = p2v_g;
+    b = p2v_b;
+  }
+  
+
+  /* let all valid edges blink with the valid color for the player */
+  for( i = 0; i < 60; i++ )
+  {
+    if ( lpgIsValidPlayerPosition(i, player) != 0 )
+      if ( i != pos )
+        eolCreate(eoEdgeBlinkCB, 600, 200, i, 1, r, g, b);  // eolCreate(eo_cb cb, uint16_t acnt, uint16_t oarg, uint16_t gpos, uint8_t plane, uint8_t r, uint8_t g, uint8_t b)
+  }       
+
+  /* illegal blink color for the player */
+  if ( player == 1 )
+    gecolSetBlink(pos, 20, 20, p1i_r,p1i_g,p1i_b, 200,200,200);
+  else
+    gecolSetBlink(pos, 20, 20, p2i_r,p2i_g,p2i_b, 200,200,200);
+}
+
+int lpgGetLegalMoveCnt(uint16_t player)
+{
+  int i;
+  int cnt = 0;
+  for( i = 0; i < 60; i++ )
+  {
+    if ( lpgIsValidPlayerPosition(i, player) != 0 )
+      cnt++;
+  }
+  return cnt;
+}
+
 void lpgSetPlayerBlink(int pos, uint16_t player)
 {
   if ( lpgIsValidPlayerPosition(pos, player) )
@@ -2369,31 +2424,77 @@ void lpgSetPlayerBlink(int pos, uint16_t player)
 */
 int lpgStopPlayerBlink(int pos, uint16_t player)
 {
-  lpgDoPlayerRingAnimation(pos, player);       /* show current player ring animation */
-  gecolStopBlink(pos); 
   if ( lpgIsValidPlayerPosition(pos, player) )
   {
+    lpgDoPlayerRingAnimation(pos, player);       /* show current player ring animation */
+    gecolStopBlink(pos); 
     gecol[pos].player = player;
     lpgSetPlayerColor(pos, player);
     return 1;
   }
   
+  gecolStopBlink(pos); 
   /* restore original player color */
   lpgSetPlayerColor(pos, gecol[pos].player);  
   return 0;
+}
+
+void lpgBlinkWinner(uint16_t player)
+{
+  int i;
+  for( i = 0; i < 60; i++ )
+  {
+    if ( gecol[i].player == player )
+      if ( player == 1 )
+        gecolSetBlink(i, 100, 100, p1_r,p1_g,p1_b, 100,100,100);
+      else
+        gecolSetBlink(i, 100, 100, p2_r,p2_g,p2_b, 100,100,100);
+  }
+}
+
+/* get AI move */
+int lpgAIMove(uint16_t player)
+{
+  int i, j;
+  int rate = 0;
+  int best_rate = 0;
+  int best_pos = -1;
+  int myOwnNextEdgesCnt;
+  for( i = 0; i < 60; i++ )
+  {
+    if ( lpgIsValidPlayerPosition(i, player) != 0 )
+    {
+      myOwnNextEdgesCnt = 0;
+      for( j = 0; j < 6;j++ )
+      {
+        if ( gecol[gel[i].next[j]].player == player )
+          myOwnNextEdgesCnt++;        
+      }
+      rate = 6-myOwnNextEdgesCnt;
+      if ( best_rate < rate )
+      {
+        best_rate = rate;
+        best_pos = i;
+      }
+    }
+  }
+  return best_pos;
 }
 
 
 
 /*================================================*/
 
-int masterModeGELShow(void)
+int gameStateMachine(void)
 {
   static int state = 0;
   static int last_key = current_key;
   static uint16_t current_player = 0;
+  static unsigned long t = 0;
   
   uint16_t pos = 0;
+
+
 
   switch(state)
   {
@@ -2403,6 +2504,14 @@ int masterModeGELShow(void)
       current_player = 1;
       lpg_half_move_count = 0;
       clearAllPlanes();
+      
+      for( int i = 0; i < 60; i++ )
+      {
+        gecolStopBlink(i);
+        gecolSetColor(i, 50, 0, 0, 0 );
+      }
+      
+      t = millis();     // assign current system time in milliseconds
       break;
     case 1:
       if ( current_key >= 0 )
@@ -2423,6 +2532,19 @@ int masterModeGELShow(void)
         state = 2;
         pn("key %d start", current_key);
       }
+      else
+      {
+        /*
+        if ( t+1000 < millis() )
+        {
+          pos = lpgAIMove(current_player);
+          last_key = gel[pos].key;      // simulate the key press for state 2
+          lpgSetPlayerBlink( pos,  current_player );
+          pn("AI move for player %d, edge %d, key=%d", current_player, pos, last_key);
+          state = 2;
+        }
+        */
+      }
       break;
     case 2:
       if ( last_key>= 0 && last_key != current_key )
@@ -2438,22 +2560,47 @@ int masterModeGELShow(void)
             
           lpg_half_move_count++;
           
-          pn("Longest Path Player 1: %d", lpgGetLongestPath(1) );
-          pn("Longest Path Player 2: %d", lpgGetLongestPath(2) );
+          pn("Longest Shortest Path Player 1: %d", lpgGetLongestShortestPath(1) );
+          pn("Longest Shortest Path Player 2: %d", lpgGetLongestShortestPath(2) );
         }
         
-        state = 1;
         last_key = -1;
+        if ( lpgGetLegalMoveCnt(1) == 0 || lpgGetLegalMoveCnt(2) == 0 )
+        {
+          int points1 = lpgGetLongestShortestPath(1);
+          int points2 = lpgGetLongestShortestPath(2);
+          
+          if ( points1 >= points2 )
+            lpgBlinkWinner(1);
+          if ( points2 >= points1 )
+            lpgBlinkWinner(2);
+          pn("Game Ended");            
+          state = 3; // end of game
+        }
+        else
+        {
+          t = millis();
+          state = 1;
+        }        
       }
       break;
-    case 3:
-      /*
-      if ( current_key < 0 )
+    case 3: // game ended: wait for key press
+      if ( current_key >= 0 )
       {
-        clearAllPlanes();
-        state = 1;
+        pn("GEL Show %s", getKeyInfoString(current_key));
+        last_key = current_key;
+        state = 4;
+        pn("Game Restart, Button Press Detected");
       }
-      */
+      break;
+    case 4: // wait for key release
+      if  ( last_key>= 0 && last_key != current_key )
+      {
+        pn("Game Restart");
+        last_key = -1;
+        state = 0;
+      }
+    
       break;
   }
   return 0;
@@ -2467,7 +2614,7 @@ int masterModeGELShow(void)
 #define MASTER_MODE_LEARN_KEY_LED_MAP 1
 #define MASTER_MODE_LEARN_PENTAGON 2
 #define MASTER_MODE_LEARN_TRIANGLE 3
-#define MASTER_MODE_GEL_SHOW 4
+#define MASTER_MODE_GAME_ENGINE 4
 
 uint8_t master_mode = MASTER_MODE_NONE;
 
@@ -2521,7 +2668,7 @@ void setup(void)
   else
   {
     pn("GEL show mode started");
-    master_mode = MASTER_MODE_GEL_SHOW;
+    master_mode = MASTER_MODE_GAME_ENGINE;
     //pn("Default mode started");
   }
 
@@ -2532,8 +2679,6 @@ void setup(void)
 // the loop function runs over and over again forever
 void loop() 
 {
-
-
   updateTouchKeys();
   clearAllPlanesExceptZero();
   eolSendAllDraw();
@@ -2551,9 +2696,9 @@ void loop()
       break;    
     case MASTER_MODE_LEARN_TRIANGLE:
         master_mode = MASTER_MODE_NONE;
-      break;    
-    case MASTER_MODE_GEL_SHOW:
-      if ( masterModeGELShow() != 0 )
+      break;
+    case MASTER_MODE_GAME_ENGINE:
+      if ( gameStateMachine() != 0 )
       {
         master_mode = MASTER_MODE_NONE;
       }
