@@ -7,6 +7,11 @@ Board: https://stm32-base.org/boards/STM32F407VET6-STM32F4XX-M
 
 ![https://stm32-base.org/assets/img/boards/STM32F407VET6_STM32F4XX_M-3.jpg](https://stm32-base.org/assets/img/boards/STM32F407VET6_STM32F4XX_M-3.jpg)
 
+Boot Mode Pin:
+
+![stm32f407_boot_mode_zoom.jpg](stm32f407_boot_mode_zoom.jpg)
+
+
 Controller: STM32F407VET6 (192 KB RAM, 512 KB Flash)
 
 Button K1: PA0 (aktive high)

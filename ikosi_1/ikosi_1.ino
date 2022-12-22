@@ -6,7 +6,7 @@
   
   
   Includes:
-    - WS2812
+    - WS2812 (Data output at GPIO PA7)
     - Sensor key read
     - Sensor key mapping and learn mode
 
