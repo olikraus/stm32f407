@@ -22,6 +22,7 @@
       inital color is 0,0,0
       fade to new color 0,0,0 with tick cnt
       
+      B12, D10
 
 */
 
@@ -37,37 +38,37 @@ uint8_t sensor_key_select_color_g = 0;
 uint8_t sensor_key_select_color_b = 0;
 
 /* if a edge is black, then it is replaced with this color */
-uint8_t black_replacement_r = 10;
-uint8_t black_replacement_g = 10;
-uint8_t black_replacement_b = 10;
+uint8_t black_replacement_r = 20;
+uint8_t black_replacement_g = 30;
+uint8_t black_replacement_b = 20;
 
 /* player 1 color */
 uint8_t p1_r = 0;
 uint8_t p1_g = 0;
-uint8_t p1_b = 200;
+uint8_t p1_b = 250;
 
 /* player 1 correct edge indication color */
 uint8_t p1v_r = 0;
 uint8_t p1v_g = 150;
-uint8_t p1v_b = 200;
+uint8_t p1v_b = 250;
 
 /* illegal edge for player 1 */
 uint8_t p1i_r = 0;
 uint8_t p1i_g = 0;
-uint8_t p1i_b = 200;
+uint8_t p1i_b = 250;
 
 /* player 2 color */
-uint8_t p2_r = 200;
+uint8_t p2_r = 250;
 uint8_t p2_g = 0;
 uint8_t p2_b = 0;
 
 /* player 2 correct edge indication color */
-uint8_t p2v_r = 200;
-uint8_t p2v_g = 100;
+uint8_t p2v_r = 250;
+uint8_t p2v_g = 150;
 uint8_t p2v_b = 0;
 
 /* illegal edge for player 2 */
-uint8_t p2i_r = 200;
+uint8_t p2i_r = 250;
 uint8_t p2i_g = 0;
 uint8_t p2i_b = 0;
 
@@ -104,7 +105,26 @@ struct ge_struct
   */
 };
 
-/* gel is learned by ikosi_learn.ino has to be inserted here */
+/*
+low cap warning for key 14 (B9), cap=9, sensor might be disconnected
+low cap warning for key 29 (C8), cap=9, sensor might be disconnected
+low cap warning for key 36 (D1), cap=11, sensor might be disconnected
+low cap warning for key 40 (D5), cap=11, sensor might be disconnected
+
+low cap warning for key 12 (B7), cap=14, sensor might be disconnected
+low cap warning for key 36 (D1), cap=6, sensor might be disconnected
+low cap warning for key 38 (D3), cap=14, sensor might be disconnected
+low cap warning for key 39 (D4), cap=13, sensor might be disconnected
+low cap warning for key 40 (D5), cap=6, sensor might be disconnected
+low cap warning for key 46 (D11), cap=5, sensor might be disconnected
+low cap warning for key 47 (D12), cap=14, sensor might be disconnected
+low cap warning for key 56 (E5), cap=13, sensor might be disconnected
+low cap warning for key 62 (E11), cap=13, sensor might be disconnected
+
+
+*/
+
+/* gel is learned by ikosi_learn.ino, result has to be inserted here */
 struct ge_struct gel[60] = {
 {36,0 /* A2 */,0,0,{-1,-1,53,-1,-1,27}}
 ,{51,1 /* A3 */,0,1,{-1,-1,7,-1,-1,0}}
@@ -749,7 +769,7 @@ struct touch_status_struct touch_status_list[] =  {
   { GPIOD, 7, PD7 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
   { GPIOD, 8, PD8 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
   { GPIOD, 9, PD9 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
-  { GPIOD, 10, PD11 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
+  { GPIOD, 10, PD10 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
   { GPIOD, 11, PD11 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
   { GPIOD, 12, PD12 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
   { GPIOD, 13, PD13 , 0, 0, TOUCH_KEY_STATUS_RELEASED, 0},
@@ -964,6 +984,23 @@ int executeKeySelfTest(void)
   return is_error;
 }
 
+int checkCapValues(void)
+{
+  int i;
+  for( i = 0; i < TOUCH_KEY_CNT; i++ )
+  {
+    //if ( touch_status_list[i].min_cap < 15 )
+    if ( key_to_LED_map[i] >= 0 )
+    {
+      if ( touch_status_list[i].min_cap < 15 )
+      {
+        pn("low cap warning for key %d (%s), cap=%d, sensor might be disconnected", 
+          i, getGPIONameByKey(i),  touch_status_list[i].min_cap );
+      }
+    }
+  }
+  return 1;
+}
 
 /*================================================*/
 
@@ -2645,7 +2682,6 @@ void setup(void)
     pinMode(touch_status_list[i].arduino_pin, OUTPUT);
   }
 
-  pn("Setup done");
 
   if (  getAssignedKeyCount() < 60 )
   {
@@ -2653,13 +2689,22 @@ void setup(void)
     for(;;)
       ;
   }
-  else if ( isGELPentagonCorrect() == 0 )
+
+  /* check for disconnected sensor keys */
+
+  updateTouchKeys();
+  checkCapValues();
+
+  pn("Setup done");
+
+  if ( isGELPentagonCorrect() == 0 )
   {
     pn("Graph structure (Pentagon) is wrong, uC halt.");
     for(;;)
       ;
   }
-  else if ( isGELTriangleCorrect() == 0 )
+  
+  if ( isGELTriangleCorrect() == 0 )
   {
     pn("Graph structure (Triangles) is wrong, uC halt.");
     for(;;)
