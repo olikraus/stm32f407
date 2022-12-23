@@ -11,6 +11,10 @@ Boot Mode Pin:
 
 ![stm32f407_boot_mode_zoom.jpg](stm32f407_boot_mode_zoom.jpg)
 
+Assembled Icosidodecahedron:
+
+![pictures/icosidodecahedron_iluminated_800x700.jpg](pictures/icosidodecahedron_iluminated_800x700.jpg)
+
 
 Controller: STM32F407VET6 (192 KB RAM, 512 KB Flash)
 
