@@ -6,6 +6,7 @@ Project:
  * Build a "kal-toh"-like (https://memory-alpha.fandom.com/wiki/Kal-toh) gaming platform.
  * Electronic board game on a icosidodecahedron surface
  * The edges of the icosidodecahedron can be selected and are iluminated
+ * Current implemented game is a "longest connect path" two player game.
  
 Icosidodecahedron 
  * 60 edges
