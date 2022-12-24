@@ -1,4 +1,6 @@
-# stm32f407
+# Icosidodecahedron based Gaming Environment with STM32F407 Controller
+
+## Summary
 
 Project: 
  * Build a "kal-toh"-like (https://memory-alpha.fandom.com/wiki/Kal-toh) gaming platform.
@@ -29,34 +31,40 @@ Software:
 Result:
 ![pictures/icosidodecahedron_iluminated_800x700.jpg](pictures/icosidodecahedron_iluminated_800x700.jpg)
  
+## Technical Details
+
+### STM32F407 Details
+  * STM32F407VET6 (192 KB RAM, 512 KB Flash)
+  * STM32duino Project (https://github.com/stm32duino/Arduino_Core_STM32): 
+    * SystemCoreClock: 168 MHz
+    * APB2: 84 Mhz
+    * APB1: 42 Mhz
+    * Register Include File: https://raw.githubusercontent.com/stm32duino/Arduino_Core_STM32/main/system/Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f407xx.h
+    * SysTick: https://github.com/ARM-software/CMSIS_5/blob/develop/CMSIS/Core/Include/core_cm4.h
 
 
- 
-Board: https://stm32-base.org/boards/STM32F407VET6-STM32F4XX-M
+### STM32F407 Board: https://stm32-base.org/boards/STM32F407VET6-STM32F4XX-M
+  * Button K1: PA0 (aktive high)
+  * LED D2: PA1 (Sink)
 
 ![https://stm32-base.org/assets/img/boards/STM32F407VET6_STM32F4XX_M-1.jpg](https://stm32-base.org/assets/img/boards/STM32F407VET6_STM32F4XX_M-1.jpg)
 
 ![https://stm32-base.org/assets/img/boards/STM32F407VET6_STM32F4XX_M-3.jpg](https://stm32-base.org/assets/img/boards/STM32F407VET6_STM32F4XX_M-3.jpg)
 
-Boot Mode Pin:
+
+### Boot Mode
+
+The above board doesn't allow to change to change the level at the BOOT0 pin (it is fixed to GND via a resistor).
+However BOOT0 is reqired to put the device into programming more for STM32Duino.
+This is done by pulling the BOOT0 pin to 3.3V via a small wire, soldered directly on the PCB:
 
 ![stm32f407_boot_mode_zoom.jpg](stm32f407_boot_mode_zoom.jpg)
+ 
 
 
 
 
-Controller: STM32F407VET6 (192 KB RAM, 512 KB Flash)
 
-Button K1: PA0 (aktive high)
-
-LED D2: PA1 (Sink)
-
-STM32duino Project (https://github.com/stm32duino/Arduino_Core_STM32): 
-  * SystemCoreClock: 168 MHz
-  * APB2: 84 Mhz
-  * APB1: 42 Mhz
-  * Register Include File: https://raw.githubusercontent.com/stm32duino/Arduino_Core_STM32/main/system/Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f407xx.h
-  * SysTick: https://github.com/ARM-software/CMSIS_5/blob/develop/CMSIS/Core/Include/core_cm4.h
 
 Arduino Pin Numbers:
 
