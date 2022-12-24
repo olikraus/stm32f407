@@ -1,6 +1,37 @@
 # stm32f407
 
+Project: 
+ * Build a "kal-toh"-like (https://memory-alpha.fandom.com/wiki/Kal-toh) gaming platform.
+ * Electronic board game on a icosidodecahedron surface
+ * The edges of the icosidodecahedron can be selected and are iluminated
+ 
+Icosidodecahedron 
+ * 60 edges
+ * 30 vertices
+ * 32 surfaces (12 pentagonal faces + 20 triangular faces) 
 
+Hardware:
+ * 60 sensors: Minus plate of a AA cell block, which is used as capacitive touch sensor fields
+ * 60 ilumnated edges: Sanded acrylic rod, iluminated via fiber opical wire from a 16x16 LED matrix
+ * 16x16 WS2812 LED Matrix
+ * Sensor & fiber optic holder: 3D printed https://github.com/olikraus/scad/tree/master/ikosidodekaeder
+ * STM32F407 development board (selected, because the STM32F407 has more than 60 GPIOs for the sensor input)
+ * Vertices: 3D printed https://github.com/olikraus/scad/tree/master/ikosidodekaeder
+ * 16x16 LED Matrix box: 3D printed https://github.com/olikraus/scad/tree/master/ikosidodekaeder
+  
+Software:
+ * Working example: https://github.com/olikraus/stm32f407/blob/main/ikosi_1/
+ * Arduino Environment (https://www.arduino.cc/)
+ * STM32Duino (https://github.com/stm32duino)
+ * WS2812B access via SPI1 written from scratch: https://github.com/olikraus/stm32f407/blob/main/spi_ws2812b/spi_ws2812b.ino
+ * Sensor Algorithm: https://github.com/olikraus/stm32f407/blob/257317d35d1a22a883fa1a342b17f78022364dc2/ikosi_1/ikosi_1.ino#L1153
+
+Result:
+![pictures/icosidodecahedron_iluminated_800x700.jpg](pictures/icosidodecahedron_iluminated_800x700.jpg)
+ 
+
+
+ 
 Board: https://stm32-base.org/boards/STM32F407VET6-STM32F4XX-M
 
 ![https://stm32-base.org/assets/img/boards/STM32F407VET6_STM32F4XX_M-1.jpg](https://stm32-base.org/assets/img/boards/STM32F407VET6_STM32F4XX_M-1.jpg)
@@ -11,9 +42,7 @@ Boot Mode Pin:
 
 ![stm32f407_boot_mode_zoom.jpg](stm32f407_boot_mode_zoom.jpg)
 
-Assembled Icosidodecahedron:
 
-![pictures/icosidodecahedron_iluminated_800x700.jpg](pictures/icosidodecahedron_iluminated_800x700.jpg)
 
 
 Controller: STM32F407VET6 (192 KB RAM, 512 KB Flash)
