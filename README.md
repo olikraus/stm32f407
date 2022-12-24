@@ -73,13 +73,13 @@ This is done by pulling the BOOT0 pin to 3.3V via a small wire, soldered directl
     
 ### Touch Sensor 
  * Sensors connected to one GPIO port are checked in parallel (up to 16 sensors at a time)
- * High clock speed of the the uC (168 MHz): Internal pull down (60k) can be used as discharge resistor 
+ * High clock speed of the ST32F407 (168 MHz): Internal pull down (60k) can be used as discharge resistor 
  * Algorithm: https://github.com/olikraus/stm32f407/blob/257317d35d1a22a883fa1a342b17f78022364dc2/ikosi_1/ikosi_1.ino#L1153
-    1. Charge the GPIO pin (set output value to "1")
-    2. Change toe GPIO to input mode with internal pulldown resistor
+    1. Charge GPIO pins (set output value to "1")
+    2. Change GPIO pins to input mode with internal pulldown resistor
     3. Sample the low/high state all sensor lines for this port
     4. Use binary search to find the sample position high-low transition for each sensor line 
-    5. High sample position (long discharge time) means 'not touched'.  
+    5. High sample index position (=long discharge time) means 'not touched'.  
 
 ### Arduino Environment
 
