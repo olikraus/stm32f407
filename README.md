@@ -68,18 +68,18 @@ This is done by pulling the BOOT0 pin to 3.3V via a small wire, soldered directl
     * APB2 clock (84Mhz) is divided by 32 to get a SPI bitrate of 2.625 MHz = 380ns
     * 380ns are close enough to the expected 400ns of the high pulse of the logical zero for the WS2812B
     * The total transmission of one bit for the WS2812B is 4x380ns=1520ns (4x SPI bit)
-  * The WS2812B waveform pattern is generated "on-the-fly" by a ISR procedure
+  * The WS2812B waveform pattern is generated "on-the-fly" by ISR procedure
     https://github.com/olikraus/stm32f407/blob/257317d35d1a22a883fa1a342b17f78022364dc2/ikosi_1/ikosi_1.ino#L290
     
 ### Touch Sensor 
  * Sensors connected to one GPIO port are checked in parallel (up to 16 sensors at a time)
  * High clock speed of the the uC (168 MHz): Internal pull down (60k) can be used as discharge resistor 
  * Algorithm: https://github.com/olikraus/stm32f407/blob/257317d35d1a22a883fa1a342b17f78022364dc2/ikosi_1/ikosi_1.ino#L1153
-  1. Charge the GPIO pin (set output value to "1")
-  2. Change toe GPIO to input mode with internal pulldown resistor
-  3. Sample the low/high state all sensor lines for this port
-  4. Use binary search to find the sample position high-low transition for each sensor line 
-  5. High sample position (long discharge time) means 'not touched'.  
+    1. Charge the GPIO pin (set output value to "1")
+    2. Change toe GPIO to input mode with internal pulldown resistor
+    3. Sample the low/high state all sensor lines for this port
+    4. Use binary search to find the sample position high-low transition for each sensor line 
+    5. High sample position (long discharge time) means 'not touched'.  
 
 ### Arduino Environment
 
